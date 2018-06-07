@@ -3,6 +3,8 @@ package eastsun.jgvm.module.io;
 import eastsun.jgvm.module.KeyModel;
 import eastsun.jgvm.module.ram.Accessable;
 import eastsun.jgvm.module.ram.Getable;
+import eastsun.jgvm.util.IOUtil;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -125,14 +127,7 @@ public final class Util {
      * @throws java.io.IOException 发生IO错误
      */
     public static KeyMap parseKeyMap(InputStream in) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] tmpBuffer = new byte[512];
-        int length;
-        while ((length = in.read(tmpBuffer)) != -1) {
-            bos.write(tmpBuffer, 0, length);
-        }
-        in.close();
-        byte[] buffer = bos.toByteArray();
+        byte[] buffer = IOUtil.readAll(in);
         int count = 0;
         for (int index = 0; index < buffer.length;) {
             if (buffer[index] == '=') {

@@ -1,6 +1,6 @@
 package eastsun.jgvm.module;
 
-import java.io.ByteArrayOutputStream;
+import eastsun.jgvm.util.IOUtil;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -8,30 +8,29 @@ import java.io.InputStream;
  * 封装一个可执行的lav程序数据,其内部维持一个文件指针
  * @author Eastsun
  */
-public abstract class LavApp {
+public final class LavApp {
 
+    private final String name;
     private byte[] appData;
     private int offset;
 
     /**
      * 通过一个输入流创建一个LavApp对象
-     * @param in 一个输入流
-     * @return 一个LavApp对象
      * @throws java.lang.IllegalArgumentException 发生IO错误或数据格式不正确
      */
-    public static LavApp createLavApp(InputStream in) throws IllegalArgumentException {
-        return new DefaultLavApp(in);
+    public static LavApp createLavApp(String name, InputStream in) throws IllegalArgumentException, IOException {
+        return new LavApp(name, in);
     }
 
-    /**
-     * 通过一个lav程序数据来创建一个LavApp<p>
-     * 注意,LavApp内部使用的就是该数组,类创建后不能从外部修改这个数组
-     * @param data
-     * @throws java.lang.IllegalArgumentException
-     */
-    protected LavApp(byte[] data) throws IllegalArgumentException {
-        this.appData = data;
+    private LavApp(String name, InputStream in) throws IllegalArgumentException, IOException {
+        this.name = name;
+        this.appData = IOUtil.readAll(in);
         verifyData();
+        reset();
+    }
+
+    public String getName() {
+        return name;
     }
 
     /**
@@ -43,45 +42,32 @@ public abstract class LavApp {
     }
 
     /**
-     * 在pointer处读取一字节数据,并使pointer加一<p>
-     * 注意,这里返回值是char类型,对应lav的char类型,因为lav的char类型是无符号的.
+     * 在pointer处读取一字节无符号整数,并使pointer加一<p>
      */
-    public final char getChar() {
-        return (char) (appData[offset++] & 0xff);
+    public final int getChar() {
+        return appData[offset++] & 0xff;
     }
 
     /**
-     * 从app中读取两字节数据,对应lav中的int类型
+     * 从app中读取两字节有符号整数,对应lav中的int类型
      * @return int
      */
-    public final short getInt() {
-        short s;
-        s = (short) (appData[offset++] & 0xff);
-        s |= (appData[offset++] & 0xff) << 8;
-        return s;
+    public final int getInt16() {
+        return (int) (short) (appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8);
     }
 
     /**
      * 从app中读取三字节数据(无符号),对应lav中文件指针数据
      */
-    public final int getAddr() {
-        int addr;
-        addr = appData[offset++] & 0xff;
-        addr |= (appData[offset++] & 0xff) << 8;
-        addr |= (appData[offset++] & 0xff) << 16;
-        return addr;
+    public final int getUint24() {
+        return appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8 | (appData[offset++] & 0xff) << 16;
     }
 
     /**
      * 从app中读取四字节数据,对应lav中的long类型
      */
-    public final int getLong() {
-        int i;
-        i = appData[offset++] & 0xff;
-        i |= (appData[offset++] & 0xff) << 8;
-        i |= (appData[offset++] & 0xff) << 16;
-        i |= (appData[offset++] & 0xff) << 24;
-        return i;
+    public final int getInt32() {
+        return appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8 | (appData[offset++] & 0xff) << 16 | (appData[offset++] & 0xff) << 24;
     }
 
     /**
@@ -99,50 +85,26 @@ public abstract class LavApp {
         offset = pos;
     }
 
-    private static class DefaultLavApp extends LavApp {
-
-        public DefaultLavApp(InputStream in) {
-            super(getDataByInputStream(in));
-        }
-
-        /**
-         * 2008.3.5<p>
-         * bug fixed<p>
-         * J2ME中某些InputStream的available方法总是返回0
-         */
-        private static byte[] getDataByInputStream(InputStream in) {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            byte[] tmpBuffer = new byte[512];
-            try {
-                int length;
-                while ((length = in.read(tmpBuffer)) != -1) {
-                    bos.write(tmpBuffer, 0, length);
-                }
-            } catch (IOException ex) {
-                throw new IllegalArgumentException(ex.getMessage());
-            } finally {
-                try {
-                    in.close();
-                } catch (IOException ex) {
-                //do nothing
-                }
-            }
-            return bos.toByteArray();
-        }
+    /**
+     * 复位数据指针
+     */
+    public final void reset() {
+        offset = 16;
     }
 
     /**
      * 检查数据格式并设置相应参数
-     * @param data 一个lavApp数据
      * @throws java.lang.IllegalArgumentException 不正确的lava格式
      */
     private void verifyData() throws IllegalArgumentException {
         if (appData.length <= 16) {
-            throw new IllegalArgumentException("不是有效的LAV文件!");
+            throw new IllegalArgumentException("不是有效的LAV文件");
         }
         if (appData[0] != 0x4c || appData[1] != 0x41 || appData[2] != 0x56) {
-            throw new IllegalArgumentException("不是有效的LAV文件!");
+            throw new IllegalArgumentException("不是有效的LAV文件");
         }
-        offset = 16;
+        if (appData[3] != 0x12) {
+            throw new IllegalArgumentException("不支持的LAV文件版本:" + Integer.toString(appData[3] & 0xff, 16));
+        }
     }
 }

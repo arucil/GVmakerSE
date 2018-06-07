@@ -28,7 +28,7 @@ public final class DefaultKeyModel implements KeyModel {
         keyStatus = new boolean[keyValues.length];
     }
 
-    public synchronized void keyPreesed(int rawKeyCode) {
+    public synchronized void keyPressed(int rawKeyCode) {
         hasKey = true;
         keyCode = rawKeyCode;
         for (int index = 0; index < keyValues.length; index++) {

@@ -2,7 +2,6 @@ package eastsun.jgvm.module;
 
 import eastsun.jgvm.module.ram.ScreenRam;
 import eastsun.jgvm.module.io.*;
-import eastsun.jgvm.module.event.Area;
 import eastsun.jgvm.module.ram.Getable;
 import eastsun.jgvm.module.ram.Ram;
 import eastsun.jgvm.module.ram.RelativeRam;
@@ -13,7 +12,7 @@ import eastsun.jgvm.module.ram.Setable;
  * @author Eastsun
  * @version 1.0 2008/1/19
  */
-final class ScreenModelImp extends ScreenModel implements Renderable {
+final class DefaultScreenModel extends ScreenModel implements Renderable {
 
     /**
      * 每行所用的字节数
@@ -29,10 +28,10 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
     private RelativeRam graphRam,  bufferRam;
     private int drawMode;
     //下列变量与drawMode有关
-    private boolean isFill,  isGraph,  isBig;
+    private boolean isFill,  isBig;
     private byte[] currData;
 
-    public ScreenModelImp() {
+    public DefaultScreenModel() {
         graphData = new byte[BUFFER_SIZE];
         bufferData = new byte[BUFFER_SIZE];
         graphRam = new ScreenRam(this, graphData, Ram.RAM_GRAPH_TYPE);
@@ -54,7 +53,7 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
     public void setDrawMode(int m) {
         drawMode = m;
         isFill = (m & RENDER_FILL_TYPE) != 0;
-        isGraph = (m & RENDER_GRAPH_TYPE) != 0;
+        boolean isGraph = (m & RENDER_GRAPH_TYPE) != 0;
         isBig = (m & TEXT_BIG_TYPE) != 0;
         currData = isGraph ? graphData : bufferData;
     }
@@ -111,17 +110,11 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
             for (int y = y0; y <= y1; y++) {
                 hLine(x0, x1, y);
             }
-            addPoint(x1, y1);
-            addPoint(x0, y0);
         } else {
             if (y0 >= 0) {
-                addPoint(x0 >= 0 ? x0 : 0, y0);
-                addPoint(x1 < WIDTH ? x1 : WIDTH - 1, y0);
                 hLine(x0, x1, y0);
             }
             if (y1 > y0 && y1 < HEIGHT) {
-                addPoint(x0 >= 0 ? x0 : 0, y1);
-                addPoint(x1 < WIDTH ? x1 : WIDTH - 1, y1);
                 hLine(x0, x1, y1);
             }
             if (y1 > y0 + 1) {
@@ -190,17 +183,11 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
         if (oy + b < 0 || oy - b >= HEIGHT) {
             return;
         }
-        //添加到修改区域
-        if (isGraph) {
-            addPoint(Math.max(0, ox - a), Math.max(0, oy - b));
-            addPoint(Math.min(WIDTH - 1, ox + a), Math.min(HEIGHT - 1, oy + b));
-        }
         int asq = a * a, bsq = b * b;
         int asq2 = asq * 2, bsq2 = bsq * 2;
         int p;
         int x = 0, y = b;
         int px = 0, py = asq2 * y;
-        int n = 1;
         p = bsq - asq * b + ((asq + 2) >> 2);
         while (px < py) {
             x++;
@@ -253,9 +240,7 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
     }
 
     public void drawPoint(int x, int y) {
-        if (drawPointImp(x, y) && isGraph) {
-            addPoint(x, y);
-        }
+        drawPointImp(x, y);
     }
 
     /**
@@ -306,7 +291,6 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
             sign = -1;
             dety = -dety;
         }
-        int qx = 0, qy = 0, px = 0, py = 0;
         boolean flags = false;
 
         int detm = detx > dety ? detx : dety;
@@ -316,13 +300,9 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
                 if (flags) {
                     break;
                 } else {
-                    qx = x0;
-                    qy = y0;
                     flags = true;
                 }
             }
-            px = x0;
-            py = y0;
             tx += detx;
             ty += dety;
             if (tx >= detm) {
@@ -335,13 +315,6 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
             }
         }
 
-        //添加到修改区域
-        if (isGraph && flags) {
-            addPoint(qx, py);
-            addPoint(px, py);
-            addPoint(px, qy);
-            addPoint(qx, qy);
-        }
     }
 
     public void drawRegion(int x, int y, int width, int height, Getable source, int addr) {
@@ -373,12 +346,6 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
         }
         if (y + height > HEIGHT) {
             height -= y + height - HEIGHT;
-        }
-
-        //如果是屏幕绘图,添加到修改区域
-        if (isGraph) {
-            addPoint(x, y);
-            addPoint(x + width - 1, y + height - 1);
         }
 
         //绘制处前无用的bit数
@@ -506,11 +473,6 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
 
     public void refresh() {
         System.arraycopy(bufferData, 0, graphData, 0, BUFFER_SIZE);
-        sx = sy = 0;
-        ex = getWidth() - 1;
-        ey = getHeight() - 1;
-        isClear = false;
-        fireScreenChanged();
     }
 
     public void xdraw(int mode) {
@@ -597,205 +559,9 @@ final class ScreenModelImp extends ScreenModel implements Renderable {
         (byte) 0x0f, (byte) 0x8f, (byte) 0x4f, (byte) 0xcf, (byte) 0x2f, (byte) 0xaf, (byte) 0x6f, (byte) 0xef,
         (byte) 0x1f, (byte) 0x9f, (byte) 0x5f, (byte) 0xdf, (byte) 0x3f, (byte) 0xbf, (byte) 0x7f, (byte) 0xff
     };
-    private int whiteColor = 0x40C040,  blackColor = 0;
-
-    public void setColor(int black, int white) {
-        blackColor = black;
-        whiteColor = white;
-    }
 
     public Renderable getRender() {
         return this;
     }
 
-    void refreshArea() {
-        sx = sy = 0;
-        ex = ey = -1;
-        isClear = true;
-    }
-
-    void addToChangedArea(Area add) {
-        if (add == null || add.isEmpty()) {
-            return;
-        }
-        addPoint(add.getX(), add.getY());
-        addPoint(add.getX() + add.getWidth() - 1, add.getY() + add.getHeight() - 1);
-    }
-
-    Area getChangedArea() {
-        return new Area(sx, sy, ex - sx + 1, ey - sy + 1);
-    }
-
-    public int[] getRGB(int[] buffer, Area area, int rate, int circ) {
-        if (area.isEmpty()) {
-            return buffer;
-        }
-        int x = area.getX() & (~0x07);
-        int w = (area.getX() - x + area.getWidth() + 0x07) & (~0x07);
-        int y = area.getY();
-        int h = area.getHeight();
-        int bytePreLine = w >>> 3;
-
-        //正常情况
-        if (rate == 1 && circ == 0) {
-            int byteOffset = y * BYTES_PER_LINE + (x >>> 3) + bytePreLine - 1;
-            int rgbOffset = y * WIDTH + x + w - 1;
-            while (--h >= 0) {
-                int offset = rgbOffset;
-                for (int n = bytePreLine - 1; n >= 0; n--, byteOffset--) {
-                    byte b = graphData[byteOffset];
-                    for (int bits = 7; bits >= 0; bits--, offset--) {
-                        buffer[offset] = (b & 0x01) == 0 ? whiteColor : blackColor;
-                        b >>= 1;
-                    }
-                }
-                rgbOffset += WIDTH;
-                byteOffset += BYTES_PER_LINE + bytePreLine;
-            }
-        } //放大两倍旋转90度
-        else if (rate == 2 && circ == 1) {
-            int byteOffset = y * BYTES_PER_LINE + (x >>> 3) + bytePreLine - 1;
-            int rgbOffset = (WIDTH - 1) * (HEIGHT << 2) - (HEIGHT << 2) * x + (y << 1);
-            while (h-- > 0) {
-                int offset = rgbOffset - (w - 1) * (HEIGHT << 2);
-                for (int n = bytePreLine; n > 0; n--, byteOffset--) {
-                    byte b = graphData[byteOffset];
-                    for (int bits = 8; bits > 0; bits--, offset += HEIGHT << 2) {
-                        if ((b & 0x01) == 0) {
-                            buffer[offset] = whiteColor;
-                            buffer[offset + 1] = whiteColor;
-                            buffer[offset + (HEIGHT << 1)] = whiteColor;
-                            buffer[offset + (HEIGHT << 1) + 1] = whiteColor;
-                        } else {
-                            buffer[offset] = blackColor;
-                            buffer[offset + 1] = blackColor;
-                            buffer[offset + (HEIGHT << 1)] = blackColor;
-                            buffer[offset + (HEIGHT << 1) + 1] = blackColor;
-                        }
-                        b >>= 1;
-                    }
-                }
-                rgbOffset += 2;
-                byteOffset += BYTES_PER_LINE + bytePreLine;
-            }
-        } //放大两倍旋转270度
-        else if (rate == 2 && circ == 3) {
-            int byteOffset = y * BYTES_PER_LINE + (x >>> 3) + bytePreLine - 1;
-            int rgbOffset = x * (HEIGHT << 2) + 2 * (HEIGHT - 1) - (y << 1);
-            while (h-- > 0) {
-                int offset = rgbOffset + (w - 1) * (HEIGHT << 2);
-                for (int n = bytePreLine; n > 0; n--, byteOffset--) {
-                    byte b = graphData[byteOffset];
-                    for (int bits = 8; bits > 0; bits--, offset -= HEIGHT << 2) {
-                        if ((b & 0x01) == 0) {
-                            buffer[offset] = whiteColor;
-                            buffer[offset + 1] = whiteColor;
-                            buffer[offset + (HEIGHT << 1)] = whiteColor;
-                            buffer[offset + (HEIGHT << 1) + 1] = whiteColor;
-                        } else {
-                            buffer[offset] = blackColor;
-                            buffer[offset + 1] = blackColor;
-                            buffer[offset + (HEIGHT << 1)] = blackColor;
-                            buffer[offset + (HEIGHT << 1) + 1] = blackColor;
-                        }
-                        b >>= 1;
-                    }
-                }
-                rgbOffset -= 2;
-                byteOffset += BYTES_PER_LINE + bytePreLine;
-            }
-        } else if (rate == 2 && circ == 0) {
-            int byteOffset = y * BYTES_PER_LINE + (x >>> 3) + bytePreLine - 1;
-            int rgbOffset = y * (WIDTH << 2) + (x + w - 1) * 2;
-            while (--h >= 0) {
-                int offset = rgbOffset;
-                for (int n = bytePreLine - 1; n >= 0; n--, byteOffset--) {
-                    byte b = graphData[byteOffset];
-                    for (int bits = 7; bits >= 0; bits--, offset -= 2) {
-                        if ((b & 0x01) == 0) {
-                            buffer[offset] = whiteColor;
-                            buffer[offset + 1] = whiteColor;
-                            buffer[offset + (WIDTH << 1)] = whiteColor;
-                            buffer[offset + (WIDTH << 1) + 1] = whiteColor;
-                        } else {
-                            buffer[offset] = blackColor;
-                            buffer[offset + 1] = blackColor;
-                            buffer[offset + (WIDTH << 1)] = blackColor;
-                            buffer[offset + (WIDTH << 1) + 1] = blackColor;
-                        }
-                        b >>= 1;
-                    }
-                }
-                rgbOffset += WIDTH << 2;
-                byteOffset += BYTES_PER_LINE + bytePreLine;
-            }
-        } else if (rate == 3 && circ == 0) {
-            int byteOffset = y * BYTES_PER_LINE + (x >>> 3) + bytePreLine - 1;
-            int rgbOffset = y * WIDTH * 9 + (x + w - 1) * 3;
-            while (--h >= 0) {
-                int offset = rgbOffset;
-                for (int n = bytePreLine - 1; n >= 0; n--, byteOffset--) {
-                    byte b = graphData[byteOffset];
-                    for (int bits = 7; bits >= 0; bits--, offset -= 3) {
-                        if ((b & 0x01) == 0) {
-                            buffer[offset] = whiteColor;
-                            buffer[offset + 1] = whiteColor;
-                            buffer[offset + 2] = whiteColor;
-                            buffer[offset + WIDTH * 3] = whiteColor;
-                            buffer[offset + WIDTH * 3 + 1] = whiteColor;
-                            buffer[offset + WIDTH * 3 + 2] = whiteColor;
-                            buffer[offset + WIDTH * 6] = whiteColor;
-                            buffer[offset + WIDTH * 6 + 1] = whiteColor;
-                            buffer[offset + WIDTH * 6 + 2] = whiteColor;
-                        } else {
-                            buffer[offset] = blackColor;
-                            buffer[offset + 1] = blackColor;
-                            buffer[offset + 2] = blackColor;
-                            buffer[offset + WIDTH * 3] = blackColor;
-                            buffer[offset + WIDTH * 3 + 1] = blackColor;
-                            buffer[offset + WIDTH * 3 + 2] = blackColor;
-                            buffer[offset + WIDTH * 6] = blackColor;
-                            buffer[offset + WIDTH * 6 + 1] = blackColor;
-                            buffer[offset + WIDTH * 6 + 2] = blackColor;
-                        }
-                        b >>= 1;
-                    }
-                }
-                rgbOffset += WIDTH * 9;
-                byteOffset += BYTES_PER_LINE + bytePreLine;
-            }
-        }
-        return buffer;
-    }
-
-    /**
-     * 往变化区域里添加一个点<p>
-     * 注意,该方法不对x,y进行检查,调用者应确保x,y的有效性
-     */
-    private void addPoint(int x, int y) {
-        if (isClear) {
-            //第一次加入点
-            isClear = false;
-            sx = ex = x;
-            sy = ey = y;
-            return;
-        }
-
-        if (x < sx) {
-            sx = x;
-        } else if (x > ex) {
-            ex = x;
-        }
-
-        if (y < sy) {
-            sy = y;
-        } else if (y > ey) {
-            ey = y;
-        }
-
-    }
-    //sx,sy为区域的左上角那个点,ex,ey为右下角那个点,注意都包含在内
-    private int sx = 0,  sy = 0,  ex = -1,  ey = -1;
-    //如果区域内还没有任何点
-    private boolean isClear = true;
 }

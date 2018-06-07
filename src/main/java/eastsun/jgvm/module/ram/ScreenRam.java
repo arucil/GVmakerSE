@@ -53,4 +53,8 @@ public final class ScreenRam implements RelativeRam {
             buffer[index] = 0;
         }
     }
+
+    public byte[] getInternalData() {
+        return buffer;
+    }
 }

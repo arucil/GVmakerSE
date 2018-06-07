@@ -5,7 +5,6 @@ import eastsun.jgvm.module.ram.Accessable;
 import eastsun.jgvm.module.ram.Ram;
 import eastsun.jgvm.module.ram.RelativeRam;
 import eastsun.jgvm.module.ram.RuntimeRam;
-import eastsun.jgvm.module.ram.Stack;
 import eastsun.jgvm.module.ram.StringRam;
 
 /**
@@ -29,15 +28,15 @@ public final class RamManager implements Accessable {
     private ScreenModel screen;
     private RuntimeRam runRam;
     private StringRam strRam;
-    private Stack stack;
+    private DataStack dataStack;
     private Ram[] rams = new Ram[3];
     private int ramCount;
 
-    public RamManager(RuntimeRam runRam, StringRam strRam, Stack stack) {
-        if (runRam == null || strRam == null || stack == null) {
+    public RamManager(RuntimeRam runRam, StringRam strRam, DataStack dataStack) {
+        if (runRam == null || strRam == null || dataStack == null) {
             throw new IllegalArgumentException("param can't be null");
         }
-        this.stack = stack;
+        this.dataStack = dataStack;
         install(runRam);
         install(strRam);
     }
@@ -147,10 +146,10 @@ public final class RamManager implements Accessable {
 
     /**
      * 得到该JLVM使用的Stack
-     * @return stack
+     * @return dataStack
      */
-    public Stack getStack() {
-        return stack;
+    public DataStack getDataStack() {
+        return dataStack;
     }
 
     /**
@@ -250,7 +249,7 @@ public final class RamManager implements Accessable {
     public void clear() {
         runRam.clear();
         strRam.clear();
-        stack.clear();
+        dataStack.clear();
         for (int index = 0; index < ramCount; index++) {
             rams[index].clear();
         }

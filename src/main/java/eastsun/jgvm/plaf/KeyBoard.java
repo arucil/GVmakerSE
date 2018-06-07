@@ -10,7 +10,6 @@ import eastsun.jgvm.module.io.DefaultKeyModel;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -33,7 +32,7 @@ public class KeyBoard extends JComponent {
         VK_Q, VK_W, VK_E, VK_R, VK_T, VK_Y, VK_U, VK_I, VK_O, VK_P,
         VK_A, VK_S, VK_D, VK_F, VK_G, VK_H, VK_J, VK_K, VK_L, VK_ENTER,
         VK_Z, VK_X, VK_C, VK_V, VK_B, VK_N, VK_M, VK_PAGE_UP, VK_UP, VK_PAGE_DOWN,
-        VK_CONTROL, VK_SHIFT, VK_CAPS_LOCK, VK_ESCAPE, VK_0, VK_PERIOD, VK_SPACE, VK_LEFT, VK_DOWN, VK_RIGHT
+        VK_CONTROL, VK_SHIFT, VK_CAPS_LOCK, VK_ESCAPE, VK_0, VK_PERIOD, VK_SPACE, VK_LEFT, VK_DOWN, VK_RIGHT,
     };
     private static char[] gvmKeyValues = {
         (char) 28, (char) 29, (char) 30, (char) 31,
@@ -42,10 +41,10 @@ public class KeyBoard extends JComponent {
         'z', 'x', 'c', 'v', 'b', 'n', 'm', (char) 19, (char) 20, (char) 14,
         (char) 25, (char) 26, (char) 18, (char) 27, '0', '.', ' ', (char) 23, (char) 21, (char) 22
     };
-    BufferedImage image;
-    DefaultKeyModel keyModel;
-    Rectangle rect;
-    boolean[] isKeyPressed;
+
+    private BufferedImage image;
+    private DefaultKeyModel keyModel;
+    private boolean[] isKeyPressed;
 
     public KeyBoard() {
         try {
@@ -76,11 +75,26 @@ public class KeyBoard extends JComponent {
     }
 
     private void keyPressed(int rawKeyCode) {
-        keyModel.keyPreesed(rawKeyCode);
+        keyModel.keyPressed(rawKeyCode);
     }
 
     private void keyReleased(int rawKeyCode) {
         keyModel.keyReleased(rawKeyCode);
+    }
+
+    private static int translateNumKey(int rawKeyCode) {
+        switch (rawKeyCode) {
+        case KeyEvent.VK_1: case KeyEvent.VK_NUMPAD1: rawKeyCode = KeyEvent.VK_B; break;
+        case KeyEvent.VK_2: case KeyEvent.VK_NUMPAD2: rawKeyCode = KeyEvent.VK_N; break;
+        case KeyEvent.VK_3: case KeyEvent.VK_NUMPAD3: rawKeyCode = KeyEvent.VK_M; break;
+        case KeyEvent.VK_4: case KeyEvent.VK_NUMPAD4: rawKeyCode = KeyEvent.VK_G; break;
+        case KeyEvent.VK_5: case KeyEvent.VK_NUMPAD5: rawKeyCode = KeyEvent.VK_H; break;
+        case KeyEvent.VK_6: case KeyEvent.VK_NUMPAD6: rawKeyCode = KeyEvent.VK_J; break;
+        case KeyEvent.VK_7: case KeyEvent.VK_NUMPAD7: rawKeyCode = KeyEvent.VK_T; break;
+        case KeyEvent.VK_8: case KeyEvent.VK_NUMPAD8: rawKeyCode = KeyEvent.VK_Y; break;
+        case KeyEvent.VK_9: case KeyEvent.VK_NUMPAD9: rawKeyCode = KeyEvent.VK_U; break;
+        }
+        return rawKeyCode;
     }
 
     private int indexOfKeyCode(int code) {
@@ -112,19 +126,21 @@ public class KeyBoard extends JComponent {
         }
 
         public void keyPressed(KeyEvent e) {
-            int index = indexOfKeyCode(e.getKeyCode());
+            int keyCode = translateNumKey(e.getKeyCode());
+            int index = indexOfKeyCode(keyCode);
             if (index == -1 || isKeyPressed[index]) {
                 return;
             }
             isKeyPressed[index] = true;
-            KeyBoard.this.keyPressed(e.getKeyCode());
+            KeyBoard.this.keyPressed(keyCode);
         }
 
         public void keyReleased(KeyEvent e) {
-            int index = indexOfKeyCode(e.getKeyCode());
+            int keyCode = translateNumKey(e.getKeyCode());
+            int index = indexOfKeyCode(keyCode);
             if (index > 0) {
                 isKeyPressed[index] = false;
-                KeyBoard.this.keyReleased(e.getKeyCode());
+                KeyBoard.this.keyReleased(keyCode);
             }
         }
     }

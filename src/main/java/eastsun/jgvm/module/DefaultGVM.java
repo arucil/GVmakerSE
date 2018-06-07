@@ -5,7 +5,6 @@ import eastsun.jgvm.module.event.Area;
 import eastsun.jgvm.module.event.ScreenChangeListener;
 import eastsun.jgvm.module.ram.Getable;
 import eastsun.jgvm.module.ram.RuntimeRam;
-import eastsun.jgvm.module.ram.Stack;
 import eastsun.jgvm.module.ram.StringRam;
 
 import java.io.UnsupportedEncodingException;
@@ -34,21 +33,21 @@ final class DefaultGVM extends JGVM {
     private KeyModel.SysInfo keyInf;
     private InputMethod input;
     private LavApp app;
-    private Stack stack;
+    private DataStack dataStack;
     private int seed;
     private boolean end;
     private Calendar cal = Calendar.getInstance();
     private Date date = new Date();
 
-    public DefaultGVM(GvmConfig cfg, FileModel fileModel, KeyModel keyModel) {
+    public DefaultGVM(GvmConfig cfg, FileModel fileModel, ScreenModel screenModel, KeyModel keyModel) {
         this.config = cfg;
         runtimeRam = new RuntimeRam(cfg.runtimeRamSize());
         stringRam = new StringRam(cfg.stringRamSize());
-        stack = new Stack(cfg.stackSize());
-        ramManager = new RamManager(runtimeRam, stringRam, stack);
+        dataStack = new DataStack(cfg.stackSize());
+        ramManager = new RamManager(runtimeRam, stringRam, dataStack);
 
         text = new TextModel();
-        screen = ScreenModel.newScreenModel();
+        screen = screenModel;
         render = screen.getRender();
 
         text.setScreenModel(screen);
@@ -72,10 +71,20 @@ final class DefaultGVM extends JGVM {
      */
     public void loadApp(LavApp app) throws IllegalStateException {
         if (this.app != null) {
-            dispose();
+            init();
         }
+
         this.app = app;
+        app.reset();
         end = false;
+
+    }
+
+    private void init() {
+        render.clearBuffer();
+        render.refresh();
+        ramManager.clear();
+        text.setTextMode(0);
     }
 
     /**
@@ -86,10 +95,10 @@ final class DefaultGVM extends JGVM {
             return;
         }
         file.dispose();
-        render.clearBuffer();
-        render.refresh();
-        ramManager.clear();
-        text.setTextMode(0);
+        // render.clearBuffer();
+        // render.refresh();
+        // ramManager.clear();
+        // text.setTextMode(0);
         this.app = null;
         this.end = true;
     }
@@ -120,94 +129,94 @@ final class DefaultGVM extends JGVM {
         case 0x00:
             break;
         case 0x01:
-            stack.push(app.getChar());
+            dataStack.push(app.getChar());
             break;
         case 0x02:
-            stack.push(app.getInt());
+            dataStack.push(app.getInt16());
             break;
         case 0x03:
-            stack.push(app.getLong());
+            dataStack.push(app.getInt32());
             break;
         case 0x04:
-            stack.push(ramManager.getChar(app.getInt() & 0xffff));
+            dataStack.push(ramManager.getChar(app.getInt16() & 0xffff));
             break;
         case 0x05:
-            stack.push(ramManager.getInt(app.getInt() & 0xffff));
+            dataStack.push(ramManager.getInt(app.getInt16() & 0xffff));
             break;
         case 0x06:
-            stack.push(ramManager.getLong(app.getInt() & 0xffff));
+            dataStack.push(ramManager.getLong(app.getInt16() & 0xffff));
             break;
         case 0x07:
-            stack.push(ramManager.getChar((stack.pop() + app.getInt()) & 0xffff));
+            dataStack.push(ramManager.getChar((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x08:
-            stack.push(ramManager.getInt((stack.pop() + app.getInt()) & 0xffff));
+            dataStack.push(ramManager.getInt((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x09:
-            stack.push(ramManager.getLong((stack.pop() + app.getInt()) & 0xffff));
+            dataStack.push(ramManager.getLong((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x0a:
-            stack.push((app.getInt() + stack.pop()) & 0xffff | 0x00010000);
+            dataStack.push((app.getInt16() + dataStack.pop()) & 0xffff | 0x00010000);
             break;
         case 0x0b:
-            stack.push((app.getInt() + stack.pop()) & 0xffff | 0x00020000);
+            dataStack.push((app.getInt16() + dataStack.pop()) & 0xffff | 0x00020000);
             break;
         case 0x0c:
-            stack.push((app.getInt() + stack.pop()) & 0xffff | 0x00040000);
+            dataStack.push((app.getInt16() + dataStack.pop()) & 0xffff | 0x00040000);
             break;
         case 0x0d:
-            stack.push(stringRam.addString(app) | 0x00100000);
+            dataStack.push(stringRam.addString(app) | 0x00100000);
             break;
         case 0x0e:
-            stack.push(ramManager.getChar((app.getInt() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getChar((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x0f:
-            stack.push(ramManager.getInt((app.getInt() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x10:
-            stack.push(ramManager.getLong((app.getInt() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getLong((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x11:
-            stack.push(ramManager.getChar((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getChar((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x12:
-            stack.push(ramManager.getInt((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x13:
-            stack.push(ramManager.getLong((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getLong((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x14:
-            stack.push((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00010000);
+            dataStack.push((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00010000);
             break;
         case 0x15:
-            stack.push((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00020000);
+            dataStack.push((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00020000);
             break;
         case 0x16:
-            stack.push((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00040000);
+            dataStack.push((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00040000);
             break;
         case 0x17:
-            stack.push((app.getInt() + stack.pop()) & 0xffff);
+            dataStack.push((app.getInt16() + dataStack.pop()) & 0xffff);
             break;
         case 0x18:
-            stack.push((app.getInt() + stack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff);
+            dataStack.push((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff);
             break;
         case 0x19:
-            stack.push((app.getInt() + runtimeRam.getRegionStartAddr()) & 0xffff);
+            dataStack.push((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff);
             break;
         case 0x1a:
-            stack.push(text.getTextRam().getStartAddr());
+            dataStack.push(text.getTextRam().getStartAddr());
             break;
         case 0x1b:
-            stack.push(screen.getGraphRam().getStartAddr());
+            dataStack.push(screen.getGraphRam().getStartAddr());
             break;
         case 0x1c:
-            stack.push(-stack.pop());
+            dataStack.push(-dataStack.pop());
             break;
         case 0x1d:
         case 0x1e:
         case 0x1f:
         case 0x20: {
-            int data = stack.pop();
+            int data = dataStack.pop();
             int addr = data & 0xffff;
             if ((data & 0x00800000) != 0) { // ???，前面的指令不可能产生局部变量的指针？？？
                 addr += runtimeRam.getRegionStartAddr();
@@ -220,169 +229,169 @@ final class DefaultGVM extends JGVM {
             }
             switch (cmd) {
             case 0x1d:
-                stack.push(++value);
+                dataStack.push(++value);
                 break;
             case 0x1e:
-                stack.push(--value);
+                dataStack.push(--value);
                 break;
             case 0x1f:
-                stack.push(value++);
+                dataStack.push(value++);
                 break;
             case 0x20:
-                stack.push(value--);
+                dataStack.push(value--);
                 break;
             }
             ramManager.setBytes(addr, len, value);
-            notifyRamChanged(addr, addr + len);
         }
         break;
         case 0x21:
-            stack.push(stack.pop() + stack.pop());
+            dataStack.push(dataStack.pop() + dataStack.pop());
             break;
         case 0x22: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 - v1);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 - v1);
         }
         break;
         case 0x23:
-            stack.push(stack.pop() & stack.pop());
+            dataStack.push(dataStack.pop() & dataStack.pop());
             break;
         case 0x24:
-            stack.push(stack.pop() | stack.pop());
+            dataStack.push(dataStack.pop() | dataStack.pop());
             break;
         case 0x25:
-            stack.push(~stack.pop());
+            dataStack.push(~dataStack.pop());
             break;
         case 0x26:
-            stack.push(stack.pop() ^ stack.pop());
+            dataStack.push(dataStack.pop() ^ dataStack.pop());
             break;
         case 0x27: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push((v1 != 0 && v2 != 0) ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push((v1 != 0 && v2 != 0) ? TRUE : FALSE);
         }
         break;
         case 0x28: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push((v1 != 0 || v2 != 0) ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push((v1 != 0 || v2 != 0) ? TRUE : FALSE);
         }
         break;
         case 0x29:
-            stack.push(stack.pop() == 0 ? TRUE : FALSE);
+            dataStack.push(dataStack.pop() == 0 ? TRUE : FALSE);
             break;
         case 0x2a:
-            stack.push(stack.pop() * stack.pop());
+            dataStack.push(dataStack.pop() * dataStack.pop());
             break;
         case 0x2b: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v1 == 0 ? -1 : v2 / v1);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 == 0 ? -1 : v2 / v1);
         }
         break;
         case 0x2c: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v1 == 0 ? 0 : v2 % v1);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 == 0 ? 0 : v2 % v1);
         }
         break;
         case 0x2d: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 << v1);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 << v1);
         }
         break;
         case 0x2e: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 >> v1);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 >> v1);
         }
         break;
         case 0x2f: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v1 == v2 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 == v2 ? TRUE : FALSE);
         }
         break;
         case 0x30: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v1 != v2 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 != v2 ? TRUE : FALSE);
         }
         break;
         case 0x31: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 <= v1 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 <= v1 ? TRUE : FALSE);
         }
         break;
         case 0x32: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 >= v1 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 >= v1 ? TRUE : FALSE);
         }
         break;
         case 0x33: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 > v1 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 > v1 ? TRUE : FALSE);
         }
         break;
         case 0x34: {
-            int v1 = stack.pop();
-            int v2 = stack.pop();
-            stack.push(v2 < v1 ? TRUE : FALSE);
+            int v1 = dataStack.pop();
+            int v2 = dataStack.pop();
+            dataStack.push(v2 < v1 ? TRUE : FALSE);
+            break;
         }
-        break;
         case 0x35: {
-            int data = stack.pop();
-            int offset = stack.pop();
+            int data = dataStack.pop();
+            int offset = dataStack.pop();
             int addr = offset & 0xffff;
             if ((offset & 0x00800000) != 0) {
                 addr += runtimeRam.getRegionStartAddr();
             }
             int len = (offset >>> 16) & 0x7f;
             ramManager.setBytes(addr, len, data);
-            stack.push(data);
-            notifyRamChanged(addr, addr + len);
+            dataStack.push(data);
+            break;
         }
-        break;
         case 0x36:
-            stack.push(ramManager.getChar(stack.pop() & 0xffff));
+            dataStack.push(ramManager.getChar(dataStack.pop() & 0xffff));
             break;
         case 0x37:
-            stack.push(stack.pop() & 0xffff | 0x00010000);
+            dataStack.push(dataStack.pop() & 0xffff | 0x00010000);
             break;
         case 0x38:
-            stack.pop();
+            dataStack.pop();
             break;
         case 0x39: {
-            int addr = app.getAddr();
-            if (stack.lastValue() == 0) {
+            int addr = app.getUint24();
+            // if (dataStack.peek(0) == 0) {
+            if (dataStack.lastValue() == 0) {
                 app.setOffset(addr);
             }
+            break;
         }
-        break;
         case 0x3a: {
-            int addr = app.getAddr();
-            if (stack.lastValue() != 0) {
+            int addr = app.getUint24();
+            // if (dataStack.peek(0) != 0) {
+            if (dataStack.lastValue() != 0) {
                 app.setOffset(addr);
             }
+            break;
         }
-        break;
         case 0x3b:
-            app.setOffset(app.getAddr());
+            app.setOffset(app.getUint24());
             break;
         case 0x3c: {
-            int addr = app.getInt() & 0xffff;
+            int addr = app.getInt16() & 0xffff;
             runtimeRam.setRegionEndAddr(addr);
             runtimeRam.setRegionStartAddr(addr);
         }
         break;
         case 0x3d: {
             //invoke
-            int nextAddr = app.getAddr();
+            int nextAddr = app.getUint24();
             int currAddr = app.getOffset();
             ramManager.setAddr(runtimeRam.getRegionEndAddr(), currAddr);
             app.setOffset(nextAddr);
@@ -392,10 +401,10 @@ final class DefaultGVM extends JGVM {
             //function entry
             ramManager.setBytes(runtimeRam.getRegionEndAddr() + 3, 2, runtimeRam.getRegionStartAddr());
             runtimeRam.setRegionStartAddr(runtimeRam.getRegionEndAddr());
-            runtimeRam.setRegionEndAddr(runtimeRam.getRegionStartAddr() + (app.getInt() & 0xffff));
+            runtimeRam.setRegionEndAddr(runtimeRam.getRegionStartAddr() + (app.getInt16() & 0xffff));
             int paramCount = app.getChar();
             while (--paramCount >= 0) {
-                ramManager.setLong(runtimeRam.getRegionStartAddr() + 5 + 4 * paramCount, stack.pop());
+                ramManager.setLong(runtimeRam.getRegionStartAddr() + 5 + 4 * paramCount, dataStack.pop());
             }
         }
         break;
@@ -410,8 +419,8 @@ final class DefaultGVM extends JGVM {
             end = true;
             break;
         case 0x41: {
-            int addr = app.getInt() & 0xffff;
-            int len = app.getInt() & 0xffff;
+            int addr = app.getInt16() & 0xffff;
+            int len = app.getInt16() & 0xffff;
             byte b;
             while (--len >= 0) {
                 //ramManager.setChar(addr++, app.getChar());
@@ -422,7 +431,7 @@ final class DefaultGVM extends JGVM {
         }
         break;
         case 0x42:
-            stack.push(screen.getBufferRam().getStartAddr());
+            dataStack.push(screen.getBufferRam().getStartAddr());
             break;
         case 0x43:
             throw new IllegalStateException("未知的指令: 0x43");
@@ -430,66 +439,67 @@ final class DefaultGVM extends JGVM {
             //loadall
             break;
         case 0x45:
-            stack.push(app.getInt() + stack.pop());
+            dataStack.push(app.getInt16() + dataStack.pop());
             break;
         case 0x46:
-            stack.push(stack.pop() - app.getInt());
+            dataStack.push(dataStack.pop() - app.getInt16());
             break;
         case 0x47:
-            stack.push(stack.pop() * app.getInt());
+            dataStack.push(dataStack.pop() * app.getInt16());
             break;
         case 0x48: {
-            int v1 = app.getInt();
-            int v2 = stack.pop();
-            stack.push(v1 == 0 ? -1 : v2 / v1);
+            int v1 = app.getInt16();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 == 0 ? -1 : v2 / v1);
         }
         break;
         case 0x49: {
-            int v1 = app.getInt();
-            int v2 = stack.pop();
-            stack.push(v1 == 0 ? 0 : v2 % v1);
+            int v1 = app.getInt16();
+            int v2 = dataStack.pop();
+            dataStack.push(v1 == 0 ? 0 : v2 % v1);
         }
         break;
         case 0x4a:
-            stack.push(stack.pop() << app.getInt());
+            dataStack.push(dataStack.pop() << app.getInt16());
             break;
         case 0x4b:
-            stack.push(stack.pop() >> app.getInt());
+            // 无符号右移
+            dataStack.push(dataStack.pop() >>> app.getInt16());
             break;
         case 0x4c:
-            stack.push(app.getInt() == stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() == dataStack.pop() ? TRUE : FALSE);
             break;
         case 0x4d:
-            stack.push(app.getInt() != stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() != dataStack.pop() ? TRUE : FALSE);
             break;
         case 0x4e:
-            stack.push(app.getInt() < stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() < dataStack.pop() ? TRUE : FALSE);
             break;
         case 0x4f:
-            stack.push(app.getInt() > stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() > dataStack.pop() ? TRUE : FALSE);
             break;
         case 0x50:
-            stack.push(app.getInt() <= stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() <= dataStack.pop() ? TRUE : FALSE);
             break;
         case 0x51:
-            stack.push(app.getInt() >= stack.pop() ? TRUE : FALSE);
+            dataStack.push(app.getInt16() >= dataStack.pop() ? TRUE : FALSE);
             break;
 
         //system function
         case 0x80:
-            text.addChar((char) (stack.pop() & 0xff));
+            text.addChar((char) (dataStack.pop() & 0xff));
             text.updateLCD(0);
             break;
         case 0x81:
-            stack.push(key.getchar());
+            dataStack.push(key.getchar());
             break;
         case 0x82:
             printf();
             break;
         //strcpy
         case 0x83: {
-            int source = stack.pop() & 0xffff;
-            int dest = stack.pop() & 0xffff;
+            int source = dataStack.pop() & 0xffff;
+            int dest = dataStack.pop() & 0xffff;
             byte b;
             do {
                 b = ramManager.getByte(source++);
@@ -499,58 +509,54 @@ final class DefaultGVM extends JGVM {
             break;
         }
         case 0x84: {
-            int addr = stack.pop() & 0xffff;
+            int addr = dataStack.pop() & 0xffff;
             int length = 0;
             while (ramManager.getByte(addr++) != 0) {
                 length++;
             }
-            stack.push(length);
+            dataStack.push(length);
         }
         break;
         case 0x85:
-            text.setTextMode(stack.pop() & 0xff);
+            text.setTextMode(dataStack.pop() & 0xff);
             break;
         case 0x86:
-            text.updateLCD(stack.pop());
+            text.updateLCD(dataStack.pop());
             break;
         case 0x87: {
-            int delayTime = stack.pop() & 0x7fff;
+            int delayTime = dataStack.pop() & 0x7fff;
             if (delayTime * 3 / 4 > 0) {
                 Thread.sleep(delayTime * 3 / 4);
             }
         }
         break;
         case 0x88:
-            stack.movePointer(-6);
-            render.setDrawMode(stack.peek(4));
-            render.drawRegion((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3),
-                    ramManager, stack.peek(5) & 0xffff);
-            notifyScreenListener(stack.peek(4));
+            dataStack.movePointer(-6);
+            render.setDrawMode(dataStack.peek(4));
+            render.drawRegion((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3),
+                    ramManager, dataStack.peek(5) & 0xffff);
             break;
         case 0x89:
             render.refresh();
             break;
         case 0x8a:
-            stack.movePointer(-4);
-            render.setDrawMode(stack.peek(3));
-            render.drawString((short) stack.peek(0), (short) stack.peek(1),
-                    ramManager, stack.peek(2) & 0xffff);
-            notifyScreenListener(stack.peek(3));
+            dataStack.movePointer(-4);
+            render.setDrawMode(dataStack.peek(3));
+            render.drawString((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    ramManager, dataStack.peek(2) & 0xffff);
             break;
         case 0x8b:
-            stack.movePointer(-5);
-            render.setDrawMode(stack.peek(4) | render.RENDER_FILL_TYPE);
-            render.drawRect((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3));
-            notifyScreenListener(stack.peek(4));
+            dataStack.movePointer(-5);
+            render.setDrawMode(dataStack.peek(4) | render.RENDER_FILL_TYPE);
+            render.drawRect((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3));
             break;
         case 0x8c:
-            stack.movePointer(-5);
-            render.setDrawMode(stack.peek(4));
-            render.drawRect((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3));
-            notifyScreenListener(stack.peek(4));
+            dataStack.movePointer(-5);
+            render.setDrawMode(dataStack.peek(4));
+            render.drawRect((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3));
             break;
         case 0x8d:
             //exit
@@ -560,177 +566,172 @@ final class DefaultGVM extends JGVM {
             render.clearBuffer();
             break;
         case 0x8f: {
-            int value = stack.pop();
-            stack.push(value >= 0 ? value : -value);
+            int value = dataStack.pop();
+            dataStack.push(value >= 0 ? value : -value);
         }
         break;
         case 0x90:
             seed = seed * 22695477 + 1;
-            stack.push((seed >> 16) & 0x7fff);
+            dataStack.push((seed >> 16) & 0x7fff);
             break;
         case 0x91:
-            seed = stack.pop();
+            seed = dataStack.pop();
             break;
         case 0x92: {
-            int col = stack.pop() & 0xff;
-            int row = stack.pop() & 0xff;
+            int col = dataStack.pop() & 0xff;
+            int row = dataStack.pop() & 0xff;
             text.setLocation(row, col);
         }
         break;
         case 0x93:
-            stack.push(key.inkey());
+            dataStack.push(key.inkey());
             break;
         case 0x94:
-            stack.movePointer(-3);
-            render.setDrawMode(stack.peek(2) ^ Renderable.RENDER_GRAPH_TYPE);
-            render.drawPoint((short) stack.peek(0), (short) stack.peek(1));
-            notifyScreenListener(stack.peek(2) ^ Renderable.RENDER_GRAPH_TYPE);
+            dataStack.movePointer(-3);
+            render.setDrawMode(dataStack.peek(2) ^ Renderable.RENDER_GRAPH_TYPE);
+            render.drawPoint((short) dataStack.peek(0), (short) dataStack.peek(1));
             break;
         case 0x95: {
-            int y = (short) stack.pop();
-            int x = (short) stack.pop();
-            stack.push(render.getPoint(x, y));
+            int y = (short) dataStack.pop();
+            int x = (short) dataStack.pop();
+            dataStack.push(render.getPoint(x, y));
         }
         break;
         case 0x96:
-            stack.movePointer(-5);
-            render.setDrawMode(stack.peek(4) ^ Renderable.RENDER_GRAPH_TYPE);
-            render.drawLine((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3));
-            notifyScreenListener(stack.peek(4) ^ Renderable.RENDER_GRAPH_TYPE);
+            dataStack.movePointer(-5);
+            render.setDrawMode(dataStack.peek(4) ^ Renderable.RENDER_GRAPH_TYPE);
+            render.drawLine((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3));
             break;
         case 0x97: {
-            stack.movePointer(-6);
-            int mode = stack.peek(5) ^ Renderable.RENDER_GRAPH_TYPE;
-            if ((stack.peek(4) & 0xff) != 0) {
+            dataStack.movePointer(-6);
+            int mode = dataStack.peek(5) ^ Renderable.RENDER_GRAPH_TYPE;
+            if ((dataStack.peek(4) & 0xff) != 0) {
                 mode |= Renderable.RENDER_FILL_TYPE;
             }
             render.setDrawMode(mode);
-            render.drawRect((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3));
-            notifyScreenListener(mode);
+            render.drawRect((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3));
         }
         break;
         case 0x98: {
-            stack.movePointer(-5);
-            int mode = stack.peek(4) ^ Renderable.RENDER_GRAPH_TYPE;
-            if ((stack.peek(3) & 0xff) != 0) {
+            dataStack.movePointer(-5);
+            int mode = dataStack.peek(4) ^ Renderable.RENDER_GRAPH_TYPE;
+            if ((dataStack.peek(3) & 0xff) != 0) {
                 mode |= Renderable.RENDER_FILL_TYPE;
             }
             render.setDrawMode(mode);
-            render.drawOval((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(2));
-            notifyScreenListener(mode);
+            render.drawOval((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(2));
         }
         break;
         case 0x99: {
-            stack.movePointer(-6);
-            int mode = stack.peek(5) ^ Renderable.RENDER_GRAPH_TYPE;
-            if ((stack.peek(4) & 0xff) != 0) {
+            dataStack.movePointer(-6);
+            int mode = dataStack.peek(5) ^ Renderable.RENDER_GRAPH_TYPE;
+            if ((dataStack.peek(4) & 0xff) != 0) {
                 mode |= Renderable.RENDER_FILL_TYPE;
             }
             render.setDrawMode(mode);
-            render.drawOval((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3));
-            notifyScreenListener(mode);
+            render.drawOval((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3));
         }
         break;
         case 0x9a:
             //beep,do nothing
             break;
         case 0x9b: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             }
         }
         break;
         case 0x9c: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             }
         }
         break;
         case 0x9d: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if ((c >= 0 && c <= 0x1f) || c == 0x7f) {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             }
         }
         break;
         case 0x9e: {
-            int c = stack.pop() & 0xff;
-            stack.push((c >= '0' && c <= '9') ? TRUE : FALSE);
+            int c = dataStack.pop() & 0xff;
+            dataStack.push((c >= '0' && c <= '9') ? TRUE : FALSE);
         }
         break;
         case 0x9f: {
-            int c = stack.pop() & 0xff;
-            stack.push((c >= 0x21 && c <= 0x7e) ? TRUE : FALSE);
+            int c = dataStack.pop() & 0xff;
+            dataStack.push((c >= 0x21 && c <= 0x7e) ? TRUE : FALSE);
         }
         break;
         case 0xa0: {
-            int c = stack.pop() & 0xff;
-            stack.push((c >= 'a' && c <= 'z') ? TRUE : FALSE);
+            int c = dataStack.pop() & 0xff;
+            dataStack.push((c >= 'a' && c <= 'z') ? TRUE : FALSE);
         }
         break;
         case 0xa1: {
-            int c = stack.pop() & 0xff;
-            stack.push((c >= 0x20 && c <= 0x7e) ? TRUE : FALSE);
+            int c = dataStack.pop() & 0xff;
+            dataStack.push((c >= 0x20 && c <= 0x7e) ? TRUE : FALSE);
         }
         break;
         //ispunct
         case 0xa2: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if (c < 0x20 || c > 0x7e) {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             } else if ((c >= '0' && c <= '9') || c == 0x20) {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             } else {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             }
         }
         break;
         case 0xa3: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if (c == 0x09 || c == 0x0a || c == 0x0b || c == 0x0c || c == 0x0d || c == 0x20) {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             }
         }
         break;
         case 0xa4: {
-            int c = stack.pop() & 0xff;
-            stack.push((c <= 'Z' && c >= 'A') ? TRUE : FALSE);
+            int c = dataStack.pop() & 0xff;
+            dataStack.push((c <= 'Z' && c >= 'A') ? TRUE : FALSE);
         }
         break;
         case 0xa5: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if (c <= 'F' && c >= 'A') {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else if (c <= 'f' && c >= 'a') {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else if (c <= '9' && c >= '0') {
-                stack.push(TRUE);
+                dataStack.push(TRUE);
             } else {
-                stack.push(FALSE);
+                dataStack.push(FALSE);
             }
         }
         break;
         //strcat
         case 0xa6: {
             //不会修改显存相关
-            int src = stack.pop() & 0xffff;
-            int dst = stack.pop() & 0xffff;
+            int src = dataStack.pop() & 0xffff;
+            int dst = dataStack.pop() & 0xffff;
             while (ramManager.getByte(dst) != 0) {
                 dst++;
             }
@@ -743,8 +744,8 @@ final class DefaultGVM extends JGVM {
         break;
         //strchr
         case 0xa7: {
-            byte c = (byte) stack.pop();
-            int addr = stack.pop() & 0xffff;
+            byte c = (byte) dataStack.pop();
+            int addr = dataStack.pop() & 0xffff;
             while (true) {
                 byte b = ramManager.getByte(addr);
                 if (b == c) {
@@ -756,12 +757,12 @@ final class DefaultGVM extends JGVM {
                 }
                 addr++;
             }
-            stack.push(addr);
+            dataStack.push(addr);
         }
         break;
         case 0xa8: {
-            int str2 = stack.pop() & 0xffff;
-            int str1 = stack.pop() & 0xffff;
+            int str2 = dataStack.pop() & 0xffff;
+            int str1 = dataStack.pop() & 0xffff;
             int cmp = 0;
             while (true) {
                 int c1 = ramManager.getChar(str1++);
@@ -771,13 +772,13 @@ final class DefaultGVM extends JGVM {
                     break;
                 }
             }
-            stack.push(cmp);
+            dataStack.push(cmp);
         }
         break;
         //strstr
         case 0xa9: {
-            int str2 = stack.pop() & 0xffff;
-            int str1 = stack.pop() & 0xffff;
+            int str2 = dataStack.pop() & 0xffff;
+            int str1 = dataStack.pop() & 0xffff;
             int addr = 0;
             caseA9Loop:
             while (ramManager.getByte(str1) != 0) {
@@ -799,101 +800,99 @@ final class DefaultGVM extends JGVM {
                 }
                 str1++;
             }
-            stack.push(addr);
+            dataStack.push(addr);
         }
         break;
         case 0xaa: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if (c >= 'A' && c <= 'Z') {
                 c += 'a' - 'A';
             }
-            stack.push(c);
+            dataStack.push(c);
         }
         break;
         case 0xab: {
-            int c = stack.pop() & 0xff;
+            int c = dataStack.pop() & 0xff;
             if (c >= 'a' && c <= 'z') {
                 c += 'A' - 'a';
             }
-            stack.push(c);
+            dataStack.push(c);
         }
         break;
         case 0xac: {
-            int len = (short) stack.pop();
-            byte b = (byte) stack.pop();
-            int addr = stack.pop() & 0xffff;
+            int len = (short) dataStack.pop();
+            byte b = (byte) dataStack.pop();
+            int addr = dataStack.pop() & 0xffff;
             //System.out.println(addr+","+len+","+b);
             int start = addr;
             while (--len >= 0) {
                 ramManager.setByte(addr++, b);
             }
-            notifyRamChanged(start, addr);
         }
         break;
         case 0xad: {
-            int len = (short) stack.pop();
-            int str2 = stack.pop() & 0xffff;
-            int str1 = stack.pop() & 0xffff;
+            int len = (short) dataStack.pop();
+            int str2 = dataStack.pop() & 0xffff;
+            int str1 = dataStack.pop() & 0xffff;
             int start = str1;
             while (--len >= 0) {
                 ramManager.setByte(str1++, ramManager.getByte(str2++));
             }
-            notifyRamChanged(start, str1);
         }
         break;
         //fopen
         case 0xae:
-            stack.movePointer(-2);
-            stack.push(file.fopen(ramManager, stack.peek(0) & 0xffff, stack.peek(1) & 0xffff));
+            dataStack.movePointer(-2);
+            dataStack.push(file.fopen(ramManager, dataStack.peek(0) & 0xffff, dataStack.peek(1) & 0xffff));
             break;
         //fclose
         case 0xaf:
-            file.fclose(stack.pop());
+            file.fclose(dataStack.pop());
             break;
         //fread
         case 0xb0: {
-            stack.movePointer(-4);
-            int v = file.fread(ramManager, stack.peek(0) & 0xffff,
-                    (short) stack.peek(2), stack.peek(3));
-            stack.push(v);
+            dataStack.movePointer(-4);
+            int v = file.fread(ramManager, dataStack.peek(0) & 0xffff,
+                    (short) dataStack.peek(2), dataStack.peek(3));
+            dataStack.push(v);
         }
         break;
         //fwrite
         case 0xb1: {
-            stack.movePointer(-4);
-            int v = file.fwrite(ramManager, stack.peek(0) & 0xffff,
-                    (short) stack.peek(2), stack.peek(3));
-            stack.push(v);
+            dataStack.movePointer(-4);
+            int v = file.fwrite(ramManager, dataStack.peek(0) & 0xffff,
+                    (short) dataStack.peek(2), dataStack.peek(3));
+            dataStack.push(v);
         }
         break;
         //fseek
         case 0xb2: {
-            stack.movePointer(-3);
-            int v = file.fseek(stack.peek(0), stack.peek(1), stack.peek(2));
-            stack.push(v);
+            dataStack.movePointer(-3);
+            int v = file.fseek(dataStack.peek(0), dataStack.peek(1), dataStack.peek(2));
+            dataStack.push(v);
         }
         break;
         //ftell
         case 0xb3:
-            stack.push(file.ftell(stack.pop()));
+            dataStack.push(file.ftell(dataStack.pop()));
             break;
         //feof
         case 0xb4:
-            stack.push(file.feof(stack.pop()) ? TRUE : FALSE);
+            dataStack.push(file.feof(dataStack.pop()) ? TRUE : FALSE);
             break;
         //rewind
         case 0xb5:
-            file.rewind(stack.pop());
+            file.rewind(dataStack.pop());
             break;
         //fgetc
         case 0xb6:
-            stack.push(file.getc(stack.pop()));
+            dataStack.push(file.getc(dataStack.pop()));
             break;
         //fputc
         case 0xb7: {
-            int fp = stack.pop();
-            int ch = stack.pop();
-            stack.push(file.putc(ch, fp));
+            int fp = dataStack.pop();
+            int ch = dataStack.pop();
+            dataStack.push(file.putc(ch, fp));
         }
         break;
         //sprintf
@@ -902,30 +901,30 @@ final class DefaultGVM extends JGVM {
             break;
         //makeDir
         case 0xb9:
-            stack.push(file.makeDir(ramManager, stack.pop() & 0xffff) ? TRUE : FALSE);
+            dataStack.push(file.makeDir(ramManager, dataStack.pop() & 0xffff) ? TRUE : FALSE);
             break;
         //deletefILE
         case 0xba:
-            stack.push(file.deleteFile(ramManager, stack.pop() & 0xffff) ? TRUE : FALSE);
+            dataStack.push(file.deleteFile(ramManager, dataStack.pop() & 0xffff) ? TRUE : FALSE);
             break;
         //getms
         case 0xbb: {
             int ms = (int) (System.currentTimeMillis() % 1000);
             ms = ms * 256 / 1000;
-            stack.push(ms);
+            dataStack.push(ms);
         }
         break;
         //checkKey
         case 0xbc: {
-            char c = (char) stack.pop();
-            stack.push(key.checkKey(c));
+            char c = (char) dataStack.pop();
+            dataStack.push(key.checkKey(c));
         }
         break;
         //memmove
         case 0xbd: {
-            int len = (short) stack.pop();
-            int src = stack.pop() & 0xffff;
-            int dst = stack.pop() & 0xffff;
+            int len = (short) dataStack.pop();
+            int src = dataStack.pop() & 0xffff;
+            int dst = dataStack.pop() & 0xffff;
             if (src > dst) {
                 for (int index = 0; index < len; index++) {
                     ramManager.setByte(dst + index, ramManager.getByte(src + index));
@@ -935,21 +934,20 @@ final class DefaultGVM extends JGVM {
                     ramManager.setByte(dst + index, ramManager.getByte(src + index));
                 }
             }
-            notifyRamChanged(dst, dst + len);
         }
         break;
         //crc16
         case 0xbe: {
-            int length = (short) stack.pop();
-            int addr = stack.pop() & 0xffff;
-            stack.push(Util.getCrc16Value(ramManager, addr, length));
+            int length = (short) dataStack.pop();
+            int addr = dataStack.pop() & 0xffff;
+            dataStack.push(Util.getCrc16Value(ramManager, addr, length));
         }
         break;
         //secret
         case 0xbf: {
-            int strAddr = stack.pop() & 0xffff;
-            int length = (short) stack.pop();
-            int memAddr = stack.pop() & 0xffff;
+            int strAddr = dataStack.pop() & 0xffff;
+            int length = (short) dataStack.pop();
+            int memAddr = dataStack.pop() & 0xffff;
             int index = 0;
             while (--length >= 0) {
                 byte mask = ramManager.getByte(strAddr + index);
@@ -966,17 +964,17 @@ final class DefaultGVM extends JGVM {
         break;
         //chDir
         case 0xc0:
-            stack.push(file.changeDir(ramManager, stack.pop() & 0xffff) ? TRUE : FALSE);
+            dataStack.push(file.changeDir(ramManager, dataStack.pop() & 0xffff) ? TRUE : FALSE);
             break;
         //fileList
         case 0xc1:
-            stack.push(fileList());
+            dataStack.push(fileList());
             break;
         //getTime
         case 0xc2: {
             date.setTime(System.currentTimeMillis());
             cal.setTime(date);
-            int addr = stack.pop() & 0xffff;
+            int addr = dataStack.pop() & 0xffff;
             ramManager.setBytes(addr, 2, cal.get(Calendar.YEAR));
             ramManager.setBytes(addr + 2, 1, cal.get(Calendar.MONTH));
             ramManager.setBytes(addr + 3, 1, cal.get(Calendar.DAY_OF_MONTH));
@@ -989,12 +987,12 @@ final class DefaultGVM extends JGVM {
         //setTime
         case 0xc3:
             //忽略之
-            stack.pop();
+            dataStack.pop();
             break;
 //                throw new IllegalStateException("不支持的函数: SetTime");
         //getWord
         case 0xc4: {
-            int mode = stack.pop();
+            int mode = dataStack.pop();
             char c;
             if (input == null) {
                 c = key.getchar();
@@ -1002,36 +1000,35 @@ final class DefaultGVM extends JGVM {
                 input.setMode(mode);
                 c = input.getWord(key, screen);
             }
-            stack.push(c);
+            dataStack.push(c);
         }
         break;
         //xDraw
         case 0xc5:
-            render.xdraw(stack.pop());
+            render.xdraw(dataStack.pop());
             break;
         //releaseKey
         case 0xc6:
-            key.releaseKey((char) stack.pop());
+            key.releaseKey((char) dataStack.pop());
             break;
         //getBlock
         case 0xc7: {
-            stack.movePointer(-6);
-            render.setDrawMode(stack.peek(4));
-            int addr = stack.peek(5) & 0xffff;
-            int length = render.getRegion((short) stack.peek(0), (short) stack.peek(1),
-                    (short) stack.peek(2), (short) stack.peek(3),
+            dataStack.movePointer(-6);
+            render.setDrawMode(dataStack.peek(4));
+            int addr = dataStack.peek(5) & 0xffff;
+            int length = render.getRegion((short) dataStack.peek(0), (short) dataStack.peek(1),
+                    (short) dataStack.peek(2), (short) dataStack.peek(3),
                     ramManager, addr);
-            notifyRamChanged(addr, addr + length);
         }
         break;
         case 0xc8: {
-            int arc = (short) stack.pop();
-            stack.push(Util.cos(arc));
+            int arc = (short) dataStack.pop();
+            dataStack.push(Util.cos(arc));
         }
         break;
         case 0xc9: {
-            int arc = (short) stack.pop();
-            stack.push(Util.sin(arc));
+            int arc = (short) dataStack.pop();
+            dataStack.push(Util.sin(arc));
         }
         break;
         case 0xca:
@@ -1044,7 +1041,7 @@ final class DefaultGVM extends JGVM {
     }
 
     private int fileList() throws InterruptedException {
-        int addr = stack.pop() & 0xffff;
+        int addr = dataStack.pop() & 0xffff;
         int count = file.getFileNum();
         byte[][] encodes = new byte[count + 1][];
         String[] dirName = new String[1];
@@ -1075,7 +1072,6 @@ final class DefaultGVM extends JGVM {
                     Renderable.RENDER_FILL_TYPE |
                     Renderable.RENDER_GRAPH_TYPE);
             render.drawRect(0, 13 * current, screen.getWidth(), 13 * current + 12);
-            screen.fireScreenChanged();
             //接受按键
             for (; ; ) {
                 int keyValue = key.getRawKey();
@@ -1131,29 +1127,15 @@ final class DefaultGVM extends JGVM {
         }
     }
 
-    private void notifyRamChanged(int start, int end) {
-        Area area = ramManager.intersectWithGraph(start, end);
-        if (!area.isEmpty()) {
-            screen.addToChangedArea(area);
-            screen.fireScreenChanged();
-        }
-    }
-
-    private void notifyScreenListener(int type) {
-        if ((type & Renderable.RENDER_GRAPH_TYPE) != 0) {
-            screen.fireScreenChanged();
-        }
-    }
-
     private void sprintf() {
-        int paramCount = stack.pop() & 0xff;
+        int paramCount = dataStack.pop() & 0xff;
         //弹出参数
-        stack.movePointer(-paramCount);
+        dataStack.movePointer(-paramCount);
         int index = 0;
         //保存字符串的地址
-        int data = stack.peek(index++) & 0xffff;
+        int data = dataStack.peek(index++) & 0xffff;
         //格式化字符串起始地址
-        int addr = stack.peek(index++) & 0xffff;
+        int addr = dataStack.peek(index++) & 0xffff;
         byte fstr, t, b;
         while ((fstr = ramManager.getByte(addr++)) != 0) {
             if (fstr == 0x25) {
@@ -1165,7 +1147,7 @@ final class DefaultGVM extends JGVM {
                 switch (t) {
                 //%d
                 case 0x64: {
-                    byte[] array = Util.intToGB(stack.peek(index++));
+                    byte[] array = Util.intToGB(dataStack.peek(index++));
                     for (int k = 0; k < array.length; k++) {
                         ramManager.setByte(data++, array[k]);
                     }
@@ -1173,11 +1155,11 @@ final class DefaultGVM extends JGVM {
                 break;
                 //%c
                 case 0x63:
-                    ramManager.setByte(data++, (byte) stack.peek(index++));
+                    ramManager.setByte(data++, (byte) dataStack.peek(index++));
                     break;
                 //%s
                 case 0x73: {
-                    int strAddr = stack.peek(index++) & 0xffff;
+                    int strAddr = dataStack.peek(index++) & 0xffff;
                     while ((b = ramManager.getByte(strAddr++)) != 0) {
                         ramManager.setByte(data++, b);
                     }
@@ -1196,12 +1178,12 @@ final class DefaultGVM extends JGVM {
     }
 
     private void printf() {
-        int paramCount = stack.pop() & 0xff;
+        int paramCount = dataStack.pop() & 0xff;
         //弹出参数
-        stack.movePointer(-paramCount);
+        dataStack.movePointer(-paramCount);
         int index = 0;
         //格式化字符串起始地址
-        int addr = stack.peek(index++) & 0xffff;
+        int addr = dataStack.peek(index++) & 0xffff;
         byte fstr, data, b;
         char c;
         while ((fstr = ramManager.getByte(addr++)) != 0) {
@@ -1214,7 +1196,7 @@ final class DefaultGVM extends JGVM {
                 switch (data) {
                 //%d
                 case 0x64: {
-                    byte[] array = Util.intToGB(stack.peek(index++));
+                    byte[] array = Util.intToGB(dataStack.peek(index++));
                     for (int k = 0; k < array.length; k++) {
                         text.addChar((char) array[k]);
                     }
@@ -1222,11 +1204,11 @@ final class DefaultGVM extends JGVM {
                 break;
                 //%c
                 case 0x63:
-                    text.addChar((char) (stack.peek(index++) & 0xff));
+                    text.addChar((char) (dataStack.peek(index++) & 0xff));
                     break;
                 //%s
                 case 0x73: {
-                    int strAddr = stack.peek(index++) & 0xffff;
+                    int strAddr = dataStack.peek(index++) & 0xffff;
                     while ((b = ramManager.getByte(strAddr++)) != 0) {
                         if (b >= 0) {
                             text.addChar((char) b);
@@ -1263,13 +1245,6 @@ final class DefaultGVM extends JGVM {
         text.updateLCD(0);
     }
 
-    public void setColor(int black, int white) {
-        screen.setColor(black, white);
-    }
-
-    public void addScreenChangeListener(ScreenChangeListener listener) {
-        screen.addScreenChangeListener(listener);
-    }
 }
 
 

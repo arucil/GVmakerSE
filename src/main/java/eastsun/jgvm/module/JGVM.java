@@ -43,9 +43,9 @@ public abstract class JGVM {
      * @return 一个新的GVM实例
      * @exception IllegalStateException 不支持该配置的GVM
      */
-    public static JGVM newGVM(GvmConfig config, FileModel fileModel, KeyModel keyModel) throws IllegalStateException {
+    public static JGVM newGVM(GvmConfig config, FileModel fileModel, ScreenModel screenModel, KeyModel keyModel) throws IllegalStateException {
         //当前实现忽略GvmConfig的version参数,总是返回一个GVM1.0的实例
-        return new DefaultGVM(config, fileModel, keyModel);
+        return new DefaultGVM(config, fileModel, screenModel, keyModel);
     }
 
     /**
@@ -74,12 +74,6 @@ public abstract class JGVM {
      */
     public abstract boolean isEnd();
 
-    /**
-     * 设置GVM屏幕显示的颜色
-     * @param black 黑
-     * @param white 白
-     */
-    public abstract void setColor(int black, int white);
 
     /**
      * 设置该GVM使用的输入法,可以为null
@@ -87,13 +81,6 @@ public abstract class JGVM {
      * @return  该GVM之前使用的输入法
      */
     public abstract InputMethod setInputMethod(InputMethod im);
-
-    /**
-     * 添加虚拟机屏幕状态监听器
-     * @param listener 屏幕监听器
-     * @see ScreenModel#addScreenChangeListener(ScreenChangeListener)
-     */
-    public abstract void addScreenChangeListener(ScreenChangeListener listener);
 
     /**
      * 得到该GVM的配置

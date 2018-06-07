@@ -1,9 +1,13 @@
 package eastsun.jgvm.plaf;
 
-import eastsun.jgvm.module.JGVM;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.image.BufferedImage;
+import eastsun.jgvm.module.ScreenModel;
+import eastsun.jgvm.module.event.Area;
+import eastsun.jgvm.module.ram.ScreenRam;
+
+import java.awt.*;
+import java.awt.image.*;
+import java.util.Timer;
+import java.util.TimerTask;
 import javax.swing.JPanel;
 
 /**
@@ -11,23 +15,54 @@ import javax.swing.JPanel;
  * @author Eastsun
  */
 public class ScreenPane extends JPanel {
-    private BufferedImage image;
-    private JGVM gvm;
-    private int[] buffer = new int[160 * 80];
+    private final BufferedImage bufImg;
 
-    public ScreenPane(JGVM gvm) {
-        this.gvm = gvm;
-        image = new BufferedImage(160, 80, BufferedImage.TYPE_3BYTE_BGR);
-        gvm.addScreenChangeListener((screenModel, area) -> {
-            screenModel.getRGB(buffer, area, 1, 0);
-            image.setRGB(0, 0, 160, 80, buffer, 0, 160);
-            repaint();
-        });
-        setPreferredSize(new Dimension(320, 160));
+    private final Timer renderTimer = new Timer();
+    private TimerTask renderTimerTask;
+
+    private static final Color BG_COLOR = new Color(0xc4cfc7);
+    private static final Color FG_COLOR = new Color(0x424549);
+    private static final int PIXEL_SCALE = 3;
+
+    public ScreenPane(ScreenModel screenModel) {
+        int screenWidth = screenModel.getWidth();
+        int screenHeight = screenModel.getHeight();
+
+        ColorModel colorModel = new IndexColorModel(1, 2,
+                new int[] { BG_COLOR.getRGB(), FG_COLOR.getRGB() },
+                0, false, -1, DataBuffer.TYPE_BYTE);
+        WritableRaster raster = WritableRaster.createPackedRaster(
+                new DataBufferByte(((ScreenRam) screenModel.getGraphRam()).getInternalData(), screenWidth * screenHeight / 8),
+                screenWidth, screenHeight, 1, new Point(0, 0));
+        bufImg = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+
+        setPreferredSize(new Dimension(screenWidth * PIXEL_SCALE, screenHeight * PIXEL_SCALE));
     }
 
+    @Override
     protected void paintComponent(Graphics g) {
-        g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+        g.drawImage(bufImg, 0, 0, getWidth(), getHeight(), null);
     }
 
+    private void renderScreen() {
+        repaint();
+    }
+
+    public void startRendering() {
+        final int delay = 1000 / 60; // 60fps
+        renderTimer.scheduleAtFixedRate(renderTimerTask = new RenderTimerTask(), delay, delay);
+    }
+
+    public void stopRendering() {
+        if (renderTimerTask != null) {
+            renderTimerTask.cancel();
+        }
+    }
+
+    private class RenderTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            EventQueue.invokeLater(ScreenPane.this::renderScreen);
+        }
+    }
 }

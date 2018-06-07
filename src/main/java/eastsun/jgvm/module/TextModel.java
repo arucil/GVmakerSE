@@ -170,7 +170,6 @@ public final class TextModel {
                 m <<= 1;
             }
         }
-        screen.fireScreenChanged();
     }
 
     public void setLocation(int row, int col) {

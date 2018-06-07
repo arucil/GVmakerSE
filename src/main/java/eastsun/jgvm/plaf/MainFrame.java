@@ -3,171 +3,200 @@ package eastsun.jgvm.plaf;
 import eastsun.jgvm.module.GvmConfig;
 import eastsun.jgvm.module.JGVM;
 import eastsun.jgvm.module.LavApp;
+import eastsun.jgvm.module.ScreenModel;
 import eastsun.jgvm.module.io.DefaultFileModel;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import javax.swing.AbstractAction;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.SwingUtilities;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
-import javax.swing.filechooser.FileFilter;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.*;
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * @version Aug 13, 2008
  * @author Eastsun
  */
 public class MainFrame extends JFrame {
+    private static final String NAME = "GVmakerSE";
+
     private JGVM gvm;
-    private ScreenPane screenPane;
-    private KeyBoard keyBoard;
-    private Worker worker;
-    private JFileChooser fileChooser;
-    private JLabel msgLabel;
+    private LavApp lavApp;
+
+    private VMThread vmThread;
+
+    private final JFileChooser fileChooser;
+    private final JLabel msgLabel;
+    private final ScreenPane screenPane;
+    private JMenuItem menuItemLoad, menuItemRun, menuItemStop;
+
+    private Status status;
+
 
     public MainFrame() {
-        super("GVmakerSE");
-        keyBoard = new KeyBoard();
-        gvm = JGVM.newGVM(new GvmConfig(), new DefaultFileModel(new FileSysSE("GVM_ROOT")), keyBoard.getKeyModel());
-        screenPane = new ScreenPane(gvm);
+        super(NAME);
+
+        KeyBoard keyBoard = new KeyBoard();
+
+        ScreenModel screenModel = ScreenModel.newScreenModel();
+
+        gvm = JGVM.newGVM(new GvmConfig(), new DefaultFileModel(new FileSysSE("GVM_ROOT")), screenModel, keyBoard.getKeyModel());
+
+        screenPane = new ScreenPane(screenModel);
+
         fileChooser = new JFileChooser("GVM_ROOT");
-        fileChooser.addChoosableFileFilter(new FileFilter() {
+        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("GVmaker Application", ".lav"));
 
-            public boolean accept(File f) {
-                if (f.isDirectory()) {
-                    return true;
-                } else {
-                    return f.getName().toLowerCase().endsWith(".lav");
-                }
-            }
+        msgLabel = new JLabel("结束");
+        msgLabel.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 0));
 
-            public String getDescription() {
-                return "GVmaker Application";
-            }
-        });
+        addWindowListener(new WindowClosingListener());
 
-        msgLabel = new JLabel(" 结束");
         add(screenPane, BorderLayout.NORTH);
         add(msgLabel, BorderLayout.CENTER);
         add(keyBoard, BorderLayout.SOUTH);
 
         setJMenuBar(createMenuBar());
+
         pack();
+
         setResizable(false);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
     }
 
-    public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            JFrame frame = new MainFrame();
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-        });
-    }
-
-    private void setMsg(final String msg) {
-        SwingUtilities.invokeLater(() -> msgLabel.setText(" " + msg));
+    private void updateStatus(Status status) {
+        this.status = status;
+        switch (status) {
+        case INITIAL:
+            menuItemLoad.setEnabled(true);
+            menuItemRun.setEnabled(false);
+            menuItemStop.setEnabled(false);
+            menuItemRun.setText("运行");
+            msgLabel.setText("准备就绪");
+            break;
+        case LOADED:
+            menuItemLoad.setEnabled(true);
+            menuItemRun.setEnabled(true);
+            menuItemStop.setEnabled(false);
+            menuItemRun.setText("运行");
+            msgLabel.setText("已加载 [" + lavApp.getName() + "]");
+            break;
+        case RUNNING:
+            menuItemLoad.setEnabled(false);
+            menuItemRun.setEnabled(true);
+            menuItemStop.setEnabled(true);
+            menuItemRun.setText("暂停");
+            msgLabel.setText("正在运行");
+            break;
+        case PAUSED:
+            menuItemLoad.setEnabled(false);
+            menuItemRun.setEnabled(true);
+            menuItemStop.setEnabled(true);
+            menuItemRun.setText("继续");
+            msgLabel.setText("已暂停");
+            break;
+        }
     }
 
     private JMenuBar createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
-        JMenu file = new JMenu("文件");
-        file.addMenuListener(new MenuListener() {
+        JMenu menuFile = menuBar.add(new JMenu("文件"));
 
-            public void menuSelected(MenuEvent e) {
-                if (worker != null && worker.isAlive()) {
-                    worker.setPaused(true);
-                    setMsg("暂停");
-                }
-            }
+        menuItemLoad = menuFile.add(new JMenuItem("打开"));
+        menuItemLoad.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
+        menuItemLoad.addActionListener(e -> openLavFile());
 
-            public void menuDeselected(MenuEvent e) {
-                if (worker != null && worker.isAlive()) {
-                    worker.setPaused(false);
-                    setMsg("运行");
-                }
-            }
+        menuFile.addSeparator();
 
-            public void menuCanceled(MenuEvent e) {
-                System.out.println("canzzzz");
+        menuItemRun = menuFile.add(new JMenuItem("运行"));
+        menuItemRun.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
+        menuItemRun.addActionListener(e -> {
+            Status newStatus = null;
+            switch (status) {
+            case LOADED:
+                start();
+                newStatus = Status.RUNNING;
+                break;
+            case RUNNING:
+                pause();
+                newStatus = Status.PAUSED;
+                break;
+            case PAUSED:
+                resume();
+                newStatus = Status.RUNNING;
+                break;
             }
+            updateStatus(newStatus);
         });
-        menuBar.add(file);
-        JMenuItem open = new JMenuItem(new AbstractAction("打开") {
 
-            public void actionPerformed(ActionEvent e) {
-                if (worker != null && worker.isAlive()) {
-                    worker.setPaused(true);
-                    setMsg("暂停");
-                }
-                openLavFile();
-            }
+        menuItemStop = menuFile.add(new JMenuItem("停止"));
+        menuItemStop.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0));
+        menuItemStop.addActionListener(e -> {
+            stop();
+            // updateStatus(Status.LOADED); // VMThread结束时会更新status
         });
-        file.add(open);
-        file.add(new AbstractAction("退出") {
-            public void actionPerformed(ActionEvent e) {
-                if (worker != null && worker.isAlive()) {
-                    worker.interrupt();
-                    try {
-                        worker.join();
-                    } catch (InterruptedException ex) {
-                        System.err.println(ex);
-                    }
-                }
-                System.exit(0);
-            }
-        });
+
+        menuFile.addSeparator();
+
+        JMenuItem menuItemExit = menuFile.add(new JMenuItem("退出"));
+        menuItemExit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F4, ActionEvent.ALT_MASK));
+        menuItemExit.addActionListener(e -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
+
         return menuBar;
     }
 
     private void openLavFile() {
         int res = fileChooser.showOpenDialog(this);
         if (res == JFileChooser.APPROVE_OPTION) {
-            InputStream in = null;
-            try {
-                in = new FileInputStream(fileChooser.getSelectedFile());
-            } catch (FileNotFoundException ex) {
-                System.err.println(ex);
-            }
-            LavApp lavApp = LavApp.createLavApp(in);
-            if (worker != null && worker.isAlive()) {
-                worker.interrupt();
-                try {
-                    worker.join();
-                } catch (InterruptedException ex) {
-                    System.out.println(ex);
-                }
-            }
-            gvm.loadApp(lavApp);
-            worker = new Worker();
-            worker.start();
-            setMsg("运行");
-        } else {
-            if (worker != null && worker.isAlive()) {
-                worker.setPaused(false);
-                setMsg("运行");
-            } else {
-                setMsg("结束");
+            File file = fileChooser.getSelectedFile();
+            try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
+                lavApp = LavApp.createLavApp(file.getName(), in);
+                updateStatus(Status.LOADED);
+            } catch (IOException e) {
+                e.printStackTrace();
+
+                JOptionPane.showMessageDialog(this, "文件加载失败:" + e.getMessage(), "GVmakerSE", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    class Worker extends Thread {
+    private void start() {
+        gvm.loadApp(lavApp);
+
+        vmThread = new VMThread();
+        vmThread.start();
+        screenPane.startRendering();
+    }
+
+    private void resume() {
+        screenPane.startRendering();
+        vmThread.setPaused(false);
+    }
+
+    private void pause() {
+        vmThread.setPaused(true);
+        screenPane.stopRendering();
+    }
+
+    private void stop() {
+        screenPane.stopRendering();
+
+        vmThread.interrupt();
+        try {
+            vmThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class VMThread extends Thread {
 
         private boolean isPaused;
 
-        public Worker() {
-            setDaemon(true);
+        VMThread() {
             setPaused(false);
         }
 
@@ -184,26 +213,40 @@ public class MainFrame extends JFrame {
                     step++;
                     if (step == 100) {
                         step = 0;
-                        Thread.sleep(0, 100);
+                        // Thread.sleep(0, 30);
                     }
                 }
-            } catch (Exception ex) {
-                System.out.println(ex);
+            } catch (InterruptedException ignored) {
+            } catch (Exception e) {
+                e.printStackTrace();
+
+                JOptionPane.showMessageDialog(MainFrame.this, "运行错误:" + e, NAME, JOptionPane.ERROR_MESSAGE);
             } finally {
                 gvm.dispose();
-                setMsg("结束");
+                EventQueue.invokeLater(() -> updateStatus(Status.LOADED));
             }
         }
 
-        public synchronized boolean isPaused() {
+        synchronized boolean isPaused() {
             return isPaused;
         }
 
-        public synchronized void setPaused(boolean p) {
+        synchronized void setPaused(boolean p) {
             if (p != isPaused) {
                 isPaused = p;
                 notifyAll();
             }
         }
+    }
+
+    private class WindowClosingListener extends WindowAdapter {
+        @Override
+        public void windowClosing(WindowEvent e) {
+            stop();
+        }
+    }
+
+    private enum Status {
+        INITIAL, LOADED, RUNNING, PAUSED
     }
 }
