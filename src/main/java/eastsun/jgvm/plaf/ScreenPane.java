@@ -20,9 +20,9 @@ public class ScreenPane extends JPanel {
     private final Timer renderTimer = new Timer();
     private TimerTask renderTimerTask;
 
-    private static final Color BG_COLOR = new Color(0xc4cfc7);
-    private static final Color FG_COLOR = new Color(0x424549);
-    private static final int PIXEL_SCALE = 3;
+    private static final Color BG_COLOR = new Color(0xa5a3a7);
+    private static final Color FG_COLOR = new Color(0x242529);
+    private static final int PIXEL_SCALE = 2;
 
     public ScreenPane(ScreenModel screenModel) {
         int screenWidth = screenModel.getWidth();

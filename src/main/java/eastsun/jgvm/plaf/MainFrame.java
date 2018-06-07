@@ -184,11 +184,13 @@ public class MainFrame extends JFrame {
     private void stop() {
         screenPane.stopRendering();
 
-        vmThread.interrupt();
-        try {
-            vmThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (vmThread != null && vmThread.isAlive()) {
+            vmThread.interrupt();
+            try {
+                vmThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

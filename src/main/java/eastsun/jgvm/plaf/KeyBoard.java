@@ -7,10 +7,8 @@ package eastsun.jgvm.plaf;
 import eastsun.jgvm.module.KeyModel;
 import eastsun.jgvm.module.io.DefaultKeyMap;
 import eastsun.jgvm.module.io.DefaultKeyModel;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -49,19 +47,26 @@ public class KeyBoard extends JComponent {
     public KeyBoard() {
         try {
             image = ImageIO.read(getClass().getResourceAsStream("/board.PNG"));
-        } catch (IOException ex) {
-            System.err.println(ex);
-            System.exit(1);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         isKeyPressed = new boolean[rawKeyCodes.length];
         keyModel = new DefaultKeyModel(new SysInfoSE());
         keyModel.setKeyMap(new DefaultKeyMap(rawKeyCodes, gvmKeyValues));
 
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            switch (e.getID()) {
+            case KeyEvent.KEY_PRESSED: keyPressed(e); break;
+            case KeyEvent.KEY_RELEASED: keyReleased(e); break;
+            }
+            return false;
+        });
+
         setPreferredSize(new Dimension(320, 110));
-        addKeyListener(new KeyLis());
-        setFocusable(true);
-        addMouseListener(new MouseLis());
-        addMouseMotionListener(new MouseLis());
+        // addKeyListener(new KeyLis());
+        // setFocusable(true);
+        // addMouseListener(new MouseLis());
+        // addMouseMotionListener(new MouseLis());
     }
 
     public KeyModel getKeyModel() {
@@ -74,12 +79,23 @@ public class KeyBoard extends JComponent {
         g2d.drawImage(image, 0, 0, getWidth(), getHeight(), null);
     }
 
-    private void keyPressed(int rawKeyCode) {
-        keyModel.keyPressed(rawKeyCode);
+    private void keyPressed(KeyEvent e) {
+        int keyCode = translateNumKey(e.getKeyCode());
+        int index = indexOfKeyCode(keyCode);
+        if (index == -1 || isKeyPressed[index]) {
+            return;
+        }
+        isKeyPressed[index] = true;
+        keyModel.keyPressed(keyCode);
     }
 
-    private void keyReleased(int rawKeyCode) {
-        keyModel.keyReleased(rawKeyCode);
+    private void keyReleased(KeyEvent e) {
+        int keyCode = translateNumKey(e.getKeyCode());
+        int index = indexOfKeyCode(keyCode);
+        if (index >= 0) {
+            isKeyPressed[index] = false;
+            keyModel.keyReleased(keyCode);
+        }
     }
 
     private static int translateNumKey(int rawKeyCode) {
@@ -117,31 +133,6 @@ public class KeyBoard extends JComponent {
         }
 
         public void mouseMoved(MouseEvent e) {
-        }
-    }
-
-    private class KeyLis implements KeyListener {
-
-        public void keyTyped(KeyEvent e) {
-        }
-
-        public void keyPressed(KeyEvent e) {
-            int keyCode = translateNumKey(e.getKeyCode());
-            int index = indexOfKeyCode(keyCode);
-            if (index == -1 || isKeyPressed[index]) {
-                return;
-            }
-            isKeyPressed[index] = true;
-            KeyBoard.this.keyPressed(keyCode);
-        }
-
-        public void keyReleased(KeyEvent e) {
-            int keyCode = translateNumKey(e.getKeyCode());
-            int index = indexOfKeyCode(keyCode);
-            if (index > 0) {
-                isKeyPressed[index] = false;
-                KeyBoard.this.keyReleased(keyCode);
-            }
         }
     }
 }

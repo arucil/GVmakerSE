@@ -7,6 +7,8 @@ import eastsun.jgvm.module.ram.Getable;
 import eastsun.jgvm.module.ram.RuntimeRam;
 import eastsun.jgvm.module.ram.StringRam;
 
+import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.io.UnsupportedEncodingException;
 import java.util.Calendar;
 import java.util.Date;
@@ -490,9 +492,11 @@ final class DefaultGVM extends JGVM {
             text.addChar((char) (dataStack.pop() & 0xff));
             text.updateLCD(0);
             break;
-        case 0x81:
-            dataStack.push(key.getchar());
+        case 0x81: {
+            int a = key.getchar();
+            dataStack.push(a);
             break;
+        }
         case 0x82:
             printf();
             break;
@@ -982,8 +986,8 @@ final class DefaultGVM extends JGVM {
             ramManager.setBytes(addr + 5, 1, cal.get(Calendar.MINUTE));
             ramManager.setBytes(addr + 6, 1, cal.get(Calendar.SECOND));
             ramManager.setBytes(addr + 7, 1, cal.get(Calendar.DAY_OF_WEEK));
+            break;
         }
-        break;
         //setTime
         case 0xc3:
             //忽略之
@@ -1001,8 +1005,8 @@ final class DefaultGVM extends JGVM {
                 c = input.getWord(key, screen);
             }
             dataStack.push(c);
+            break;
         }
-        break;
         //xDraw
         case 0xc5:
             render.xdraw(dataStack.pop());
