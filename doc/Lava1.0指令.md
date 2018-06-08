@@ -85,14 +85,14 @@ printf函数调用时最后会加上01 xx，参数总个数。如printf("hello, 
 | 2b | - | 弹栈b, 弹栈a, 压栈a/b（除零会直接退出程序） |
 | 2c | - | 取余（除0退出） |
 | 2d | - | 左移 |
-| 2e | - | 有符号右移 |
+| 2e | - | 无符号右移 |
 | 2f | - | == |
 | 30 | - | != |
 | 31 | - | <= |
 | 32 | - | >= |
 | 33 | - | > |
 | 34 | - | < |
-| 35 | - | 指针赋值。弹栈value，弹栈指针，根据指针higher 16 bits，把value赋值给指针指向的值 |
+| 35 | - | 指针赋值。弹栈value，弹栈指针，根据指针higher 16 bits，把value赋值给指针指向的值。最后value压栈 |
 | 36 | - | 弹栈word16(addr),取地址addr处的uint8压栈 |
 | 37 | - | 弹栈word16(addr), addr &#124; 0x00010000压栈（把地址变成uint8指针，用于指针赋值） |
 | 38 | - | 弹栈 |
@@ -114,7 +114,7 @@ printf函数调用时最后会加上01 xx，参数总个数。如printf("hello, 
 | 48 | word16(rhs) | 弹栈lhs,lhs/rhs压栈 |
 | 49 | word16(rhs) | 弹栈lhs,lhs%rhs压栈 |
 | 4a | word16(rhs) | 弹栈lhs,lhs<<rhs压栈 |
-| 4b | word16(rhs) | 弹栈lhs,lhs>>rhs压栈 |
+| 4b | word16(rhs) | 弹栈lhs,lhs>>rhs（无符号右移）压栈 |
 | 4c | word16(rhs) | 弹栈lhs,lhs==rhs压栈 |
 | 4d | word16(rhs) | 弹栈lhs,lhs!=rhs压栈 |
 | 4e | word16(rhs) | 弹栈lhs,lhs>rhs压栈 |

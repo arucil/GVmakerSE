@@ -9,7 +9,7 @@ package eastsun.jgvm.module.ram;
  * @author Eastsun
  * @version 2008/2/19
  */
-public interface Setable {
+public interface WritableMemory {
 
     void setByte(int addr, byte b) throws IndexOutOfBoundsException;
 }

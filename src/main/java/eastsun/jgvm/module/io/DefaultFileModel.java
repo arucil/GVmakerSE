@@ -1,8 +1,8 @@
 package eastsun.jgvm.module.io;
 
 import eastsun.jgvm.module.FileModel;
-import eastsun.jgvm.module.ram.Getable;
-import eastsun.jgvm.module.ram.Setable;
+import eastsun.jgvm.module.ram.ReadableMemory;
+import eastsun.jgvm.module.ram.WritableMemory;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -61,7 +61,7 @@ public class DefaultFileModel implements FileModel {
         strBuf = new byte[400];
     }
 
-    public boolean changeDir(Getable source, int addr) {
+    public boolean changeDir(ReadableMemory source, int addr) {
         int pre = -2;
         int length = 0;
         byte b;
@@ -115,7 +115,7 @@ public class DefaultFileModel implements FileModel {
         }
     }
 
-    public boolean makeDir(Getable source, int addr) {
+    public boolean makeDir(ReadableMemory source, int addr) {
         String dir = getFileName(source, addr);
         boolean result = fileSys.makeDir(dir);
         if (result && isParent(workDir, dir)) {
@@ -143,7 +143,7 @@ public class DefaultFileModel implements FileModel {
         return workDirInf.listFiles(names, start, num);
     }
 
-    public int fopen(Getable source, int fileName, int openMode) {
+    public int fopen(ReadableMemory source, int fileName, int openMode) {
         int num = -1;
         //指示文件指针位置,true开头,false为结尾
         boolean pointer = true;
@@ -287,7 +287,7 @@ public class DefaultFileModel implements FileModel {
         return files[fp].putc(c);
     }
 
-    public int fread(Setable dest, int addr, int size, int fp) {
+    public int fread(WritableMemory dest, int addr, int size, int fp) {
         if ((fp & 0x80) == 0) {
             return 0;
         }
@@ -307,7 +307,7 @@ public class DefaultFileModel implements FileModel {
         return count;
     }
 
-    public int fwrite(Getable source, int addr, int size, int fp) {
+    public int fwrite(ReadableMemory source, int addr, int size, int fp) {
         if ((fp & 0x80) == 0) {
             return 0;
         }
@@ -330,7 +330,7 @@ public class DefaultFileModel implements FileModel {
         return count;
     }
 
-    public boolean deleteFile(Getable source, int addr) {
+    public boolean deleteFile(ReadableMemory source, int addr) {
         String file = getFileName(source, addr);
         boolean result = fileSys.deleteFile(file);
         //如果当前目录信息被修改,重置之
@@ -416,7 +416,7 @@ public class DefaultFileModel implements FileModel {
         return false;
     }
 
-    private String getFileName(Getable src, int addr) {
+    private String getFileName(ReadableMemory src, int addr) {
         String name = getString(src, addr);
         if (!name.startsWith("/")) {
             name = workDir + name;
@@ -424,7 +424,7 @@ public class DefaultFileModel implements FileModel {
         return name;
     }
 
-    private String getString(Getable src, int addr) {
+    private String getString(ReadableMemory src, int addr) {
         int length = 0;
         byte b;
         while ((b = src.getByte(addr++)) != 0) {

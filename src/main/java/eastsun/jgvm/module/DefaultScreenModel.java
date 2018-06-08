@@ -2,10 +2,10 @@ package eastsun.jgvm.module;
 
 import eastsun.jgvm.module.ram.ScreenRam;
 import eastsun.jgvm.module.io.*;
-import eastsun.jgvm.module.ram.Getable;
+import eastsun.jgvm.module.ram.ReadableMemory;
 import eastsun.jgvm.module.ram.Ram;
 import eastsun.jgvm.module.ram.RelativeRam;
-import eastsun.jgvm.module.ram.Setable;
+import eastsun.jgvm.module.ram.WritableMemory;
 
 /**
  * ScreenModel的实现类,该类实现了Renderable接口<p>
@@ -58,7 +58,7 @@ final class DefaultScreenModel extends ScreenModel implements Renderable {
         currData = isGraph ? graphData : bufferData;
     }
 
-    public void drawString(int x, int y, Getable source, int addr) {
+    public void drawString(int x, int y, ReadableMemory source, int addr) {
         int length = 0;
         while (source.getByte(addr + length) != 0) {
             length++;
@@ -66,11 +66,11 @@ final class DefaultScreenModel extends ScreenModel implements Renderable {
         drawString(x, y, source, addr, length);
     }
 
-    public void drawString(int x, int y, Getable source, int addr, int length) {
+    public void drawString(int x, int y, ReadableMemory source, int addr, int length) {
         //这个调用drawRegion时会修改区域,所以这儿不需要再修改区域
         byte[] data = isBig ? new byte[32] : new byte[24];
         int h = isBig ? 16 : 12;
-        Getable getter = Util.asAccessable(data);
+        ReadableMemory getter = Util.asAccessable(data);
         while (length > 0) {
             char c = (char) (source.getByte(addr++) & 0xff);
             length--;
@@ -268,10 +268,15 @@ final class DefaultScreenModel extends ScreenModel implements Renderable {
     }
 
     public int getPoint(int x, int y) {
+        if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) {
+            return 0; ///TODO: 超出屏幕范围应返回1
+        }
         int offset = y * BYTES_PER_LINE + (x >>> 3);
+        /*
         if (offset < 0 || offset >= BUFFER_SIZE) {
             return 0;
         }
+        */
         int mask = 0x80 >> (x & 0x07);
         return graphData[offset] & mask;
     }
@@ -317,7 +322,7 @@ final class DefaultScreenModel extends ScreenModel implements Renderable {
 
     }
 
-    public void drawRegion(int x, int y, int width, int height, Getable source, int addr) {
+    public void drawRegion(int x, int y, int width, int height, ReadableMemory source, int addr) {
         if (width <= 0 || height <= 0) {
             return;
         }
@@ -451,7 +456,7 @@ final class DefaultScreenModel extends ScreenModel implements Renderable {
     /**
      * 该方法不对x,y,width,height检查,可能会抛出IndexOutOfBoundsException
      */
-    public int getRegion(int x, int y, int width, int height, Setable dest, int addr) {
+    public int getRegion(int x, int y, int width, int height, WritableMemory dest, int addr) {
         //每行占用的byte数,忽略低3位
         int bytePerLine = width / 8;
         //图片数据在显存中开始地址,x忽略低三位

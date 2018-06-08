@@ -26,7 +26,7 @@ public final class StringRam implements Ram {
         int addr = offset + startAddr;
         byte b;
         do {
-            b = (byte) source.getChar();
+            b = (byte) source.getUint8();
             buffer[offset++] = b;
         } while (b != 0);
         if (offset >= buffer.length * 3 / 4) {

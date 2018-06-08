@@ -1,7 +1,7 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.ram.Getable;
-import eastsun.jgvm.module.ram.Setable;
+import eastsun.jgvm.module.ram.ReadableMemory;
+import eastsun.jgvm.module.ram.WritableMemory;
 
 /**
  * 绘图接口,通过该接口向屏幕或缓冲区绘制图像<p>
@@ -66,12 +66,12 @@ public interface Renderable {
     /**
      * 绘制一个以0结尾的字符串
      */
-    public void drawString(int x, int y, Getable source, int addr);
+    public void drawString(int x, int y, ReadableMemory source, int addr);
 
     /**
      * 绘制从地址addr开始的length个字符 
      */
-    public void drawString(int x, int y, Getable source, int addr, int length);
+    public void drawString(int x, int y, ReadableMemory source, int addr, int length);
 
     /**
      * 绘制矩形
@@ -108,14 +108,14 @@ public interface Renderable {
     /**
      * 绘制图像,图像所在区域可以不在屏幕范围内
      */
-    public void drawRegion(int x, int y, int width, int height, Getable src, int addr);
+    public void drawRegion(int x, int y, int width, int height, ReadableMemory src, int addr);
 
     /**
      * 得到屏幕或缓冲区的图像数据,忽略x,width的低三位
      * @throws IndexOutOfBoundsException 如果图像超出屏幕范围
      * @return length 图像数据长度
      */
-    public int getRegion(int x, int y, int width, int height, Setable dst, int addr);
+    public int getRegion(int x, int y, int width, int height, WritableMemory dst, int addr);
 
     /**
      * 特效

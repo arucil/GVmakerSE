@@ -1,6 +1,5 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.event.Area;
 import eastsun.jgvm.module.ram.Accessable;
 import eastsun.jgvm.module.ram.Ram;
 import eastsun.jgvm.module.ram.RelativeRam;
@@ -44,10 +43,10 @@ public final class RamManager implements Accessable {
     /**
      * 等同于getByte(addr)
      * @param addr 地址
-     * @return 一个无符号char值表示一个byte值
+     * @return 一个无符号int值表示一个byte值
      * @see #getByte(int)
      */
-    public char getChar(int addr) {
+    public char getUint8(int addr) {
         return (char) (getByte(addr) & 0xff);
     }
 
@@ -56,8 +55,12 @@ public final class RamManager implements Accessable {
      * @param addr 地址
      * @return int
      */
-    public short getInt(int addr) {
+    public short getInt16(int addr) {
         return (short) getBytes(addr, SIZE_OF_INT);
+    }
+
+    public int getUint16(int addr) {
+        return getBytes(addr, SIZE_OF_INT);
     }
 
     /**
@@ -65,7 +68,7 @@ public final class RamManager implements Accessable {
      * @param addr 地址
      * @return 文件指针
      */
-    public int getAddr(int addr) {
+    public int getUint24(int addr) {
         return getBytes(addr, SIZE_OF_ADDR);
     }
 
@@ -74,7 +77,7 @@ public final class RamManager implements Accessable {
      * @param addr 地址
      * @return long
      */
-    public int getLong(int addr) {
+    public int getInt32(int addr) {
         return getBytes(addr, SIZE_OF_LONG);
     }
 
@@ -84,28 +87,28 @@ public final class RamManager implements Accessable {
      * @param c char值,第八位有效
      * @see #setByte(int,byte)
      */
-    public void setChar(int addr, char c) {
+    public void setUint8(int addr, char c) {
         setByte(addr, (byte) c);
     }
 
     /**
      * 设置一个lava中的int数据
      */
-    public void setInt(int addr, short i) {
+    public void setInt16(int addr, short i) {
         setBytes(addr, SIZE_OF_INT, i);
     }
 
     /**
      * 设置一个lava中的文件指针数据
      */
-    public void setAddr(int addr, int a) {
+    public void setUint24(int addr, int a) {
         setBytes(addr, SIZE_OF_ADDR, a);
     }
 
     /**
      * 设置一个lava中的long数据
      */
-    public void setLong(int addr, int l) {
+    public void setInt32(int addr, int l) {
         setBytes(addr, SIZE_OF_LONG, l);
     }
 
@@ -128,7 +131,6 @@ public final class RamManager implements Accessable {
      * 用一个整值来设置内存中连续count个字节值<p>
      * 注意:这些内存地址中可能涉及到显存或屏幕缓冲区,该方法不负责通知相应组件<p>
      *      应该自己调用intersectWithGraph()方法判断并做出相应反应
-     * @see #intersectWithGraph(int,int)
      */
     public void setBytes(int addr, int count, int data) {
         while (--count >= 0) {
@@ -158,39 +160,6 @@ public final class RamManager implements Accessable {
      */
     public RuntimeRam getRuntimeRam() {
         return runRam;
-    }
-
-    /**
-     * 得到以start开始end结束的内存地址在屏幕上的显示区域<p>
-     * @param start 开始地址,包括
-     * @param end 结束地址,不包括
-     * @return 该内存区域在屏幕显示区域的最小覆盖矩形;如果不存在现存或该内存块不与显存相交,则返回一个空的Area
-     */
-    public Area intersectWithGraph(int start, int end) {
-        if (graphRam == null) {
-            return Area.EMPTY_AREA;
-        }
-        if (start >= graphRam.getStartAddr() + graphRam.size() || end <= graphRam.getStartAddr()) {
-            return Area.EMPTY_AREA;
-        }
-        if (start < graphRam.getStartAddr()) {
-            start = graphRam.getStartAddr();
-        }
-        if (end > graphRam.getStartAddr() + graphRam.size()) {
-            end = graphRam.getStartAddr() + graphRam.size();
-        }
-        start <<= 3;
-        end = (end << 3) - 1;
-        int y1 = start / screen.getWidth();
-        int x1 = start % screen.getWidth();
-        int y2 = end / screen.getWidth();
-        int x2 = end % screen.getWidth();
-        if (y1 == y2) {
-            return new Area(x1, y1, x2 - x1 + 1, 1);
-        }
-        else {
-            return new Area(0, y1, screen.getWidth(), y2 - y1 + 1);
-        }
     }
 
     /**

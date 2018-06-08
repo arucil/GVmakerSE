@@ -1,6 +1,6 @@
 package eastsun.jgvm.module.io;
 
-import eastsun.jgvm.module.ram.Setable;
+import eastsun.jgvm.module.ram.WritableMemory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -129,7 +129,7 @@ public final class SpellInfo {
          * @param len     欲获取的汉字个数
          * @return           实际获取的汉字个数
          */
-        public int getGB(Setable dst, int offset, int id, int len) {
+        public int getGB(WritableMemory dst, int offset, int id, int len) {
             id <<= 1;
             len <<= 1;
             int index = 0;

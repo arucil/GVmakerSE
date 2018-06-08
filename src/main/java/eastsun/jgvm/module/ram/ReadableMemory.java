@@ -9,7 +9,7 @@ package eastsun.jgvm.module.ram;
  * @author Eastsun
  * @version 2008/2/19
  */
-public interface Getable {
+public interface ReadableMemory {
 
     /**
      * 读取地址addr处的数据

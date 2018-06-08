@@ -1,14 +1,10 @@
 package eastsun.jgvm.module;
 
 import eastsun.jgvm.module.io.*;
-import eastsun.jgvm.module.event.Area;
-import eastsun.jgvm.module.event.ScreenChangeListener;
-import eastsun.jgvm.module.ram.Getable;
+import eastsun.jgvm.module.ram.ReadableMemory;
 import eastsun.jgvm.module.ram.RuntimeRam;
 import eastsun.jgvm.module.ram.StringRam;
 
-import java.awt.*;
-import java.awt.event.KeyEvent;
 import java.io.UnsupportedEncodingException;
 import java.util.Calendar;
 import java.util.Date;
@@ -118,20 +114,20 @@ final class DefaultGVM extends JGVM {
     /**
      * 运行下一个指令
      *
-     * @throws java.lang.IllegalStateException 程序已经结束或不支持的操作
+     * @throws IllegalStateException 程序已经结束或不支持的操作
      * @throws InterruptedException            运行期间当前线程被中断
      */
     public void nextStep() throws IllegalStateException, InterruptedException {
         if (isEnd()) {
             throw new IllegalStateException("程序已经终止!");
         }
-        int cmd = app.getChar();
+        int cmd = app.getUint8();
         //System.out.println(Integer.toHexString(cmd));
         switch (cmd) {
         case 0x00:
             break;
         case 0x01:
-            dataStack.push(app.getChar());
+            dataStack.push(app.getUint8());
             break;
         case 0x02:
             dataStack.push(app.getInt16());
@@ -140,22 +136,22 @@ final class DefaultGVM extends JGVM {
             dataStack.push(app.getInt32());
             break;
         case 0x04:
-            dataStack.push(ramManager.getChar(app.getInt16() & 0xffff));
+            dataStack.push(ramManager.getUint8(app.getInt16() & 0xffff));
             break;
         case 0x05:
-            dataStack.push(ramManager.getInt(app.getInt16() & 0xffff));
+            dataStack.push(ramManager.getInt16(app.getInt16() & 0xffff));
             break;
         case 0x06:
-            dataStack.push(ramManager.getLong(app.getInt16() & 0xffff));
+            dataStack.push(ramManager.getInt32(app.getInt16() & 0xffff));
             break;
         case 0x07:
-            dataStack.push(ramManager.getChar((dataStack.pop() + app.getInt16()) & 0xffff));
+            dataStack.push(ramManager.getUint8((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x08:
-            dataStack.push(ramManager.getInt((dataStack.pop() + app.getInt16()) & 0xffff));
+            dataStack.push(ramManager.getInt16((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x09:
-            dataStack.push(ramManager.getLong((dataStack.pop() + app.getInt16()) & 0xffff));
+            dataStack.push(ramManager.getInt32((dataStack.pop() + app.getInt16()) & 0xffff));
             break;
         case 0x0a:
             dataStack.push((app.getInt16() + dataStack.pop()) & 0xffff | 0x00010000);
@@ -170,22 +166,22 @@ final class DefaultGVM extends JGVM {
             dataStack.push(stringRam.addString(app) | 0x00100000);
             break;
         case 0x0e:
-            dataStack.push(ramManager.getChar((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getUint8((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x0f:
-            dataStack.push(ramManager.getInt((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt16((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x10:
-            dataStack.push(ramManager.getLong((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt32((app.getInt16() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x11:
-            dataStack.push(ramManager.getChar((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getUint8((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x12:
-            dataStack.push(ramManager.getInt((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt16((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x13:
-            dataStack.push(ramManager.getLong((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
+            dataStack.push(ramManager.getInt32((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff));
             break;
         case 0x14:
             dataStack.push((app.getInt16() + dataStack.pop() + runtimeRam.getRegionStartAddr()) & 0xffff | 0x00010000);
@@ -358,7 +354,7 @@ final class DefaultGVM extends JGVM {
             break;
         }
         case 0x36:
-            dataStack.push(ramManager.getChar(dataStack.pop() & 0xffff));
+            dataStack.push(ramManager.getUint8(dataStack.pop() & 0xffff));
             break;
         case 0x37:
             dataStack.push(dataStack.pop() & 0xffff | 0x00010000);
@@ -395,7 +391,7 @@ final class DefaultGVM extends JGVM {
             //invoke
             int nextAddr = app.getUint24();
             int currAddr = app.getOffset();
-            ramManager.setAddr(runtimeRam.getRegionEndAddr(), currAddr);
+            ramManager.setUint24(runtimeRam.getRegionEndAddr(), currAddr);
             app.setOffset(nextAddr);
         }
         break;
@@ -404,16 +400,16 @@ final class DefaultGVM extends JGVM {
             ramManager.setBytes(runtimeRam.getRegionEndAddr() + 3, 2, runtimeRam.getRegionStartAddr());
             runtimeRam.setRegionStartAddr(runtimeRam.getRegionEndAddr());
             runtimeRam.setRegionEndAddr(runtimeRam.getRegionStartAddr() + (app.getInt16() & 0xffff));
-            int paramCount = app.getChar();
+            int paramCount = app.getUint8();
             while (--paramCount >= 0) {
-                ramManager.setLong(runtimeRam.getRegionStartAddr() + 5 + 4 * paramCount, dataStack.pop());
+                ramManager.setInt32(runtimeRam.getRegionStartAddr() + 5 + 4 * paramCount, dataStack.pop());
             }
         }
         break;
         case 0x3f: {
-            int addr = ramManager.getAddr(runtimeRam.getRegionStartAddr());
+            int addr = ramManager.getUint24(runtimeRam.getRegionStartAddr());
             runtimeRam.setRegionEndAddr(runtimeRam.getRegionStartAddr());
-            runtimeRam.setRegionStartAddr(ramManager.getInt(runtimeRam.getRegionEndAddr() + 3) & 0xffff);
+            runtimeRam.setRegionStartAddr(ramManager.getInt16(runtimeRam.getRegionEndAddr() + 3) & 0xffff);
             app.setOffset(addr);
         }
         break;
@@ -427,7 +423,7 @@ final class DefaultGVM extends JGVM {
             while (--len >= 0) {
                 //ramManager.setChar(addr++, app.getChar());
                 //正常GVmaker中,这些数据是保存在runtimeRam中
-                b = (byte) app.getChar();
+                b = (byte) app.getUint8();
                 runtimeRam.setByte(addr++, b);
             }
         }
@@ -769,8 +765,8 @@ final class DefaultGVM extends JGVM {
             int str1 = dataStack.pop() & 0xffff;
             int cmp = 0;
             while (true) {
-                int c1 = ramManager.getChar(str1++);
-                int c2 = ramManager.getChar(str2++);
+                int c1 = ramManager.getUint8(str1++);
+                int c2 = ramManager.getUint8(str2++);
                 cmp = c1 - c2;
                 if (cmp != 0 || c1 == 0) {
                     break;
@@ -1118,7 +1114,7 @@ final class DefaultGVM extends JGVM {
         }
     }
 
-    private class GetableImp implements Getable {
+    private class GetableImp implements ReadableMemory {
 
         private byte[] buf;
 

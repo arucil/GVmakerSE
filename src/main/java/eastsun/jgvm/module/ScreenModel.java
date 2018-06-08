@@ -1,7 +1,5 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.event.Area;
-import eastsun.jgvm.module.event.ScreenChangeListener;
 import eastsun.jgvm.module.ram.RelativeRam;
 
 /**

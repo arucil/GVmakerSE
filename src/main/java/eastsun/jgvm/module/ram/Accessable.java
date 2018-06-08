@@ -9,5 +9,5 @@ package eastsun.jgvm.module.ram;
  * @author Eastsun
  * @version 2008/2/19
  */
-public interface Accessable extends Getable, Setable {
+public interface Accessable extends ReadableMemory, WritableMemory {
 }

@@ -1,5 +1,5 @@
 group 'eastsun'
-version '0.1'
+version '0.2'
 
 apply plugin: 'java'
 
@@ -10,5 +10,14 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile 'com.nikhaldimann:inieditor:r6'
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': '$mainClassName'
+    }
+    classifier = 'all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }

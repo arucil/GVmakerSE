@@ -2,15 +2,11 @@ package eastsun.jgvm.module.io;
 
 import eastsun.jgvm.module.KeyModel;
 import eastsun.jgvm.module.ram.Accessable;
-import eastsun.jgvm.module.ram.Getable;
+import eastsun.jgvm.module.ram.ReadableMemory;
 import eastsun.jgvm.util.IOUtil;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URL;
 
 /**
  * 一个工具类,主要提供字符点阵库以及一些实用方法
@@ -26,7 +22,7 @@ public final class Util {
     /**
      * 得到src从addr开始的length个字节的crc16码
      */
-    public static char getCrc16Value(Getable src, int addr, int length) {
+    public static char getCrc16Value(ReadableMemory src, int addr, int length) {
         char crc = 0, tmp;
         while (--length >= 0) {
             tmp = (char) ((crc >> 8) & 0xff);

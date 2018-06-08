@@ -1,6 +1,6 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.ram.Getable;
+import eastsun.jgvm.module.ram.ReadableMemory;
 import eastsun.jgvm.module.ram.Ram;
 import eastsun.jgvm.module.ram.RelativeRam;
 
@@ -21,7 +21,7 @@ public final class TextModel {
     private int curRow,  curCol;
     private boolean isBigMode;
     private byte[] buffer;
-    private Getable getter;
+    private ReadableMemory getter;
     private RelativeRam ram;
 
     public TextModel() {
@@ -218,7 +218,7 @@ public final class TextModel {
         curRow--;
     }
 
-    private static final class ByteArrayGetter implements Getable {
+    private static final class ByteArrayGetter implements ReadableMemory {
 
         private byte[] buffer;
 

@@ -1,7 +1,5 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.event.ScreenChangeListener;
-
 import java.awt.*;
 
 /**

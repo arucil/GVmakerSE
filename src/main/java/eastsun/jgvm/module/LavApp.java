@@ -44,7 +44,7 @@ public final class LavApp {
     /**
      * 在pointer处读取一字节无符号整数,并使pointer加一<p>
      */
-    public final int getChar() {
+    public final int getUint8() {
         return appData[offset++] & 0xff;
     }
 
@@ -52,8 +52,12 @@ public final class LavApp {
      * 从app中读取两字节有符号整数,对应lav中的int类型
      * @return int
      */
-    public final int getInt16() {
-        return (int) (short) (appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8);
+    public final short getInt16() {
+        return (short) (appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8);
+    }
+
+    public final int getUint16() {
+        return appData[offset++] & 0xff | (appData[offset++] & 0xff) << 8;
     }
 
     /**

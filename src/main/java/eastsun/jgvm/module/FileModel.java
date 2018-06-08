@@ -1,7 +1,7 @@
 package eastsun.jgvm.module;
 
-import eastsun.jgvm.module.ram.Getable;
-import eastsun.jgvm.module.ram.Setable;
+import eastsun.jgvm.module.ram.ReadableMemory;
+import eastsun.jgvm.module.ram.WritableMemory;
 
 /**
  * 文件系统,实现GVM中的各种文件操作功能<p>
@@ -17,12 +17,12 @@ public interface FileModel {
     /**
      * 改变当前工作目录
      */
-    public boolean changeDir(Getable source, int addr);
+    public boolean changeDir(ReadableMemory source, int addr);
 
     /**
      * 创建文件夹
      */
-    public boolean makeDir(Getable source, int addr);
+    public boolean makeDir(ReadableMemory source, int addr);
 
     /**
      * 得到当前目录下的文件个数
@@ -46,7 +46,7 @@ public interface FileModel {
      * @param openMode 打开模式开始地址
      * @return 文件号,低8位有效
      */
-    public int fopen(Getable source, int fileName, int openMode);
+    public int fopen(ReadableMemory source, int fileName, int openMode);
 
     /**
      * 关闭文件
@@ -77,7 +77,7 @@ public interface FileModel {
      * @param fp   文件号
      * @return     读取数据的长度,如发生IO错误或遇文件结尾返回0
      */
-    public int fread(Setable dest, int addr, int size, int fp);
+    public int fread(WritableMemory dest, int addr, int size, int fp);
 
     /**
      * 写入一段数据
@@ -87,12 +87,12 @@ public interface FileModel {
      * @param fp     文件号
      * @return       写入数据的长度,如发生IO错误或遇到文件结尾返回0
      */
-    public int fwrite(Getable source, int addr, int size, int fp);
+    public int fwrite(ReadableMemory source, int addr, int size, int fp);
 
     /**
      * 删除文件
      */
-    public boolean deleteFile(Getable source, int addr);
+    public boolean deleteFile(ReadableMemory source, int addr);
 
     /**
      * 文件指针定位
