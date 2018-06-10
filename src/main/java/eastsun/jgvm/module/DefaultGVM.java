@@ -781,7 +781,7 @@ final class DefaultGVM extends JGVM {
             int str1 = dataStack.pop() & 0xffff;
             int addr = 0;
             caseA9Loop:
-            while (ramManager.getByte(str1) != 0) {
+            while (true) {
                 int s1 = str1;
                 int s2 = str2;
                 while (true) {
